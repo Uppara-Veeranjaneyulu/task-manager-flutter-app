@@ -1,31 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:task_manager_app/presentation/widgets/create_list_dialog.dart';
 
 import '../../data/models/task_model.dart';
 import '../providers/theme_provider.dart';
 import '../providers/list_provider.dart';
+import '../widgets/create_list_dialog.dart';
 import 'add_task_screen.dart';
 import 'edit_task_screen.dart';
 import 'starred_tasks_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  String get uid => FirebaseAuth.instance.currentUser!.uid;
+
   @override
   Widget build(BuildContext context) {
-    // ✅ MUST be here (not inside StreamBuilder)
     final selectedList = context.watch<ListProvider>().selectedList;
+
+    // 🔹 Build task query (USER-SCOPED)
+    Query taskQuery = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('tasks');
+
+    if (selectedList != null) {
+      taskQuery = taskQuery.where('listName', isEqualTo: selectedList);
+    }
 
     return Scaffold(
       // 🔝 APP BAR
       appBar: AppBar(
         title: Text(selectedList ?? "All tasks"),
-
         actions: [
           Consumer<ThemeProvider>(
-            builder: (context, themeProvider, _) {
+            builder: (_, themeProvider, __) {
               return IconButton(
                 icon: Icon(
                   themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
@@ -39,99 +51,125 @@ class HomeScreen extends StatelessWidget {
 
       // 📂 DRAWER
       drawer: Drawer(
-        child: ListView(
-          children: [
-            const DrawerHeader(
-              child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
-            ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 🔝 HEADER
+              const DrawerHeader(
+                child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
+              ),
 
-            // ✅ ALL TASKS
-            ListTile(
-              leading: const Icon(Icons.check),
-              title: const Text("All tasks"),
-              selected: context.watch<ListProvider>().selectedList == null,
-              onTap: () {
-                context.read<ListProvider>().showAllTasks();
-                Navigator.pop(context);
-              },
-            ),
+              // 📋 MAIN MENU (SCROLLABLE PART)
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // ✅ ALL TASKS
+                    ListTile(
+                      leading: const Icon(Icons.check),
+                      title: const Text("All tasks"),
+                      selected:
+                          context.watch<ListProvider>().selectedList == null,
+                      onTap: () {
+                        context.read<ListProvider>().showAllTasks();
+                        Navigator.pop(context);
+                      },
+                    ),
 
-            // ⭐ STARRED
-            ListTile(
-              leading: const Icon(Icons.star),
-              title: const Text("Starred"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StarredTasksScreen()),
-                );
-              },
-            ),
-
-            const Divider(),
-
-            // 📁 LISTS
-            ExpansionTile(
-              title: const Text("Lists"),
-              children: [
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('lists')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const SizedBox();
-
-                    return Column(
-                      children: snapshot.data!.docs.map((doc) {
-                        final listName = doc['name'];
-
-                        return ListTile(
-                          title: Text(listName),
-                          selected:
-                              context.watch<ListProvider>().selectedList ==
-                              listName,
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, size: 18),
-                            onPressed: () async {
-                              // move tasks to My Tasks before delete
-                              final tasks = await FirebaseFirestore.instance
-                                  .collection('tasks')
-                                  .where('listName', isEqualTo: listName)
-                                  .get();
-
-                              for (var t in tasks.docs) {
-                                t.reference.update({'listName': 'My Tasks'});
-                              }
-
-                              await doc.reference.delete();
-                            },
+                    // ⭐ STARRED
+                    ListTile(
+                      leading: const Icon(Icons.star),
+                      title: const Text("Starred"),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StarredTasksScreen(),
                           ),
-                          onTap: () {
-                            context.read<ListProvider>().selectList(listName);
-                            Navigator.pop(context);
-                          },
                         );
-                      }).toList(),
-                    );
-                  },
-                ),
+                      },
+                    ),
 
-                // ➕ CREATE LIST
-                ListTile(
-                  leading: const Icon(Icons.add),
-                  title: const Text("Create new list"),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => const CreateListDialog(),
-                    );
-                  },
+                    const Divider(),
+
+                    // 📁 LISTS
+                    ExpansionTile(
+                      title: const Text("Lists"),
+                      children: [
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(uid)
+                              .collection('lists')
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const SizedBox();
+                            }
+
+                            return Column(
+                              children: snapshot.data!.docs.map((doc) {
+                                final listName = doc['name'] as String;
+
+                                return ListTile(
+                                  title: Text(listName),
+                                  selected:
+                                      context
+                                          .watch<ListProvider>()
+                                          .selectedList ==
+                                      listName,
+                                  onTap: () {
+                                    context.read<ListProvider>().selectList(
+                                      listName,
+                                    );
+                                    Navigator.pop(context);
+                                  },
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+
+                        ListTile(
+                          leading: const Icon(Icons.add),
+                          title: const Text("Create new list"),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => const CreateListDialog(),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
+              ),
+
+              // 🔻 LOGOUT (ALWAYS AT BOTTOM)
+              const Divider(),
+
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  "Logout",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  await FirebaseAuth.instance.signOut();
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
+
 
       // ➕ ADD TASK
       floatingActionButton: FloatingActionButton(
@@ -146,10 +184,7 @@ class HomeScreen extends StatelessWidget {
 
       // 📋 TASK LIST
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('tasks')
-            .where('listName', isEqualTo: selectedList)
-            .snapshots(),
+        stream: taskQuery.orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -173,8 +208,54 @@ class HomeScreen extends StatelessWidget {
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                elevation: 2,
-                child: InkWell(
+                child: ListTile(
+                  leading: Checkbox(
+                    value: task.isCompleted,
+                    onChanged: (value) {
+                      FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(uid)
+                          .collection('tasks')
+                          .doc(task.id)
+                          .update({
+                            'isCompleted': value,
+                            'updatedAt': Timestamp.now(),
+                          });
+                    },
+                  ),
+                  title: Text(
+                    task.title,
+                    style: TextStyle(
+                      decoration: task.isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+                  subtitle: task.description.isNotEmpty
+                      ? Text(
+                          task.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (task.isStarred)
+                        const Icon(Icons.star, color: Colors.amber),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(uid)
+                              .collection('tasks')
+                              .doc(task.id)
+                              .delete();
+                        },
+                      ),
+                    ],
+                  ),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -183,65 +264,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  child: ListTile(
-                    leading: Checkbox(
-                      value: task.isCompleted,
-                      onChanged: (value) {
-                        FirebaseFirestore.instance
-                            .collection('tasks')
-                            .doc(task.id)
-                            .update({
-                              'isCompleted': value,
-                              'updatedAt': Timestamp.now(),
-                            });
-                      },
-                    ),
-
-                    title: Text(
-                      task.title,
-                      style: TextStyle(
-                        decoration: task.isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (task.dueDateTime != null)
-                          Text(
-                            "Due: ${task.dueDateTime!.day}/${task.dueDateTime!.month} "
-                            "${task.dueDateTime!.hour.toString().padLeft(2, '0')}:"
-                            "${task.dueDateTime!.minute.toString().padLeft(2, '0')}",
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        if (task.description.isNotEmpty)
-                          Text(
-                            task.description,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (task.isStarred)
-                          const Icon(Icons.star, color: Colors.amber),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            FirebaseFirestore.instance
-                                .collection('tasks')
-                                .doc(task.id)
-                                .delete();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               );
             },

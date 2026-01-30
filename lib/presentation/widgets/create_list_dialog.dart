@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateListDialog extends StatefulWidget {
   const CreateListDialog({super.key});
@@ -9,16 +10,28 @@ class CreateListDialog extends StatefulWidget {
 }
 
 class _CreateListDialogState extends State<CreateListDialog> {
-  final controller = TextEditingController();
+  final TextEditingController controller = TextEditingController();
 
-  void createList() async {
-    if (controller.text.trim().isEmpty) return;
+  String get uid => FirebaseAuth.instance.currentUser!.uid;
 
-    await FirebaseFirestore.instance.collection('lists').add({
-      'name': controller.text.trim(),
-    });
+  Future<void> createList() async {
+    final name = controller.text.trim();
+
+    if (name.isEmpty) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('lists')
+        .add({'name': name, 'createdAt': Timestamp.now()});
 
     Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -27,7 +40,8 @@ class _CreateListDialogState extends State<CreateListDialog> {
       title: const Text("Create new list"),
       content: TextField(
         controller: controller,
-        decoration: const InputDecoration(hintText: "Enter name"),
+        autofocus: true,
+        decoration: const InputDecoration(hintText: "Enter list name"),
       ),
       actions: [
         TextButton(

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../data/models/task_model.dart';
 import 'edit_task_screen.dart';
 
 class StarredTasksScreen extends StatelessWidget {
   const StarredTasksScreen({super.key});
+
+  String get uid => FirebaseAuth.instance.currentUser!.uid;
 
   @override
   Widget build(BuildContext context) {
@@ -14,8 +17,11 @@ class StarredTasksScreen extends StatelessWidget {
 
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
             .collection('tasks')
             .where('isStarred', isEqualTo: true)
+            .orderBy('updatedAt', descending: true)
             .snapshots(),
 
         builder: (context, snapshot) {
@@ -48,6 +54,8 @@ class StarredTasksScreen extends StatelessWidget {
                     icon: const Icon(Icons.star, color: Colors.amber),
                     onPressed: () {
                       FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(uid)
                           .collection('tasks')
                           .doc(task.id)
                           .update({

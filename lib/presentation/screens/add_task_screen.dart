@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:task_manager_app/core/utils/ai_helper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -15,23 +15,42 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   DateTime? selectedDateTime;
   bool isStarred = false;
-  String selectedList = "My Tasks";
+  String selectedList = "";
 
-  Future<void> pickDateTime() async { 
+  String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    ensureDefaultListExists();
+  }
+
+  Future<void> ensureDefaultListExists() async {
+    final ref = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .collection('lists');
+
+    final snapshot = await ref.get();
+
+    if (snapshot.docs.isEmpty) {
+      await ref.add({'name': 'My Tasks'});
+    }
+  }
+
+  Future<void> pickDateTime() async {
     final date = await showDatePicker(
       context: context,
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
       initialDate: DateTime.now(),
     );
-
     if (date == null) return;
 
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
-
     if (time == null) return;
 
     setState(() {
@@ -45,18 +64,23 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     });
   }
 
-  void saveTask() async {
-    await FirebaseFirestore.instance.collection('tasks').add({
-      'title': titleController.text.trim(),
-      'description': descriptionController.text.trim(),
-      'dueDateTime': selectedDateTime, // ✅ DateTime → Timestamp
-      'isCompleted': false,
-      'isStarred': AIHelper.shouldStarTask(titleController.text),
-      'listName': AIHelper.suggestList(titleController.text),
+  Future<void> saveTask() async {
+    if (titleController.text.trim().isEmpty || selectedList.isEmpty) return;
 
-      'createdAt': Timestamp.now(),
-      'updatedAt': Timestamp.now(),
-    });
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .collection('tasks')
+        .add({
+          'title': titleController.text.trim(),
+          'description': descriptionController.text.trim(),
+          'dueDateTime': selectedDateTime,
+          'isCompleted': false,
+          'isStarred': isStarred,
+          'listName': selectedList,
+          'createdAt': Timestamp.now(),
+          'updatedAt': Timestamp.now(),
+        });
 
     Navigator.pop(context);
   }
@@ -74,23 +98,27 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         title: const Text("Add task"),
         actions: [
           IconButton(
-            icon: Icon(isStarred ? Icons.star : Icons.star_border),
+            icon: Icon(
+              isStarred ? Icons.star : Icons.star_border,
+              color: isStarred ? Colors.amber : null,
+            ),
             onPressed: () {
               setState(() => isStarred = !isStarred);
             },
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
           children: [
             TextField(
               controller: titleController,
               decoration: const InputDecoration(hintText: "Add title"),
             ),
-            const SizedBox(height: 10),
+
+            const SizedBox(height: 12),
 
             Row(
               children: [
@@ -107,29 +135,50 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ],
             ),
 
+            const SizedBox(height: 12),
+
             TextField(
               controller: descriptionController,
               decoration: const InputDecoration(hintText: "Add description"),
               maxLines: 3,
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            DropdownButton<String>(
-              value: selectedList,
-              items: const [
-                DropdownMenuItem(value: "My Tasks", child: Text("My Tasks")),
-                DropdownMenuItem(value: "Work", child: Text("Work")),
-                DropdownMenuItem(value: "Study", child: Text("Study")),
-              ],
-              onChanged: (value) {
-                setState(() => selectedList = value!);
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUserId)
+                  .collection('lists')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const CircularProgressIndicator();
+                }
+
+                final listDocs = snapshot.data!.docs;
+
+                if (listDocs.isEmpty) {
+                  return const Text("No lists available");
+                }
+
+                if (!listDocs.any((doc) => doc['name'] == selectedList)) {
+                  selectedList = listDocs.first['name'];
+                }
+
+                return DropdownButtonFormField<String>(
+                  value: selectedList,
+                  decoration: const InputDecoration(labelText: "List"),
+                  items: listDocs.map((doc) {
+                    final name = doc['name'] as String;
+                    return DropdownMenuItem(value: name, child: Text(name));
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() => selectedList = value!);
+                  },
+                );
               },
             ),
-
-            const Spacer(),
-
-            
           ],
         ),
       ),

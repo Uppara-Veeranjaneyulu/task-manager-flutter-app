@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../data/models/task_model.dart';
 
 class EditTaskScreen extends StatefulWidget {
   final TaskModel task;
+
   const EditTaskScreen({super.key, required this.task});
 
   @override
@@ -11,26 +14,28 @@ class EditTaskScreen extends StatefulWidget {
 }
 
 class _EditTaskScreenState extends State<EditTaskScreen> {
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+
   late TextEditingController titleController;
   late TextEditingController descriptionController;
 
   DateTime? selectedDateTime;
   bool isStarred = false;
-  String selectedList = "My Tasks";
+  String? selectedList; // ⚠️ nullable
 
   @override
   void initState() {
     super.initState();
+
     titleController = TextEditingController(text: widget.task.title);
-    descriptionController = TextEditingController(
-      text: widget.task.description,
-    );
+    descriptionController =
+        TextEditingController(text: widget.task.description);
+
     selectedDateTime = widget.task.dueDateTime;
     isStarred = widget.task.isStarred;
     selectedList = widget.task.listName;
   }
 
-  // 📅 PICK DATE & TIME
   Future<void> pickDateTime() async {
     final date = await showDatePicker(
       context: context,
@@ -61,19 +66,20 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     });
   }
 
-  // 💾 UPDATE TASK
-  void updateTask() async {
+  Future<void> updateTask() async {
     await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
         .collection('tasks')
         .doc(widget.task.id)
         .update({
-          'title': titleController.text.trim(),
-          'description': descriptionController.text.trim(),
-          'dueDateTime': selectedDateTime,
-          'isStarred': isStarred,
-          'listName': selectedList,
-          'updatedAt': Timestamp.now(),
-        });
+      'title': titleController.text.trim(),
+      'description': descriptionController.text.trim(),
+      'dueDateTime': selectedDateTime,
+      'isStarred': isStarred,
+      'listName': selectedList ?? 'My Tasks',
+      'updatedAt': Timestamp.now(),
+    });
 
     Navigator.pop(context);
   }
@@ -81,7 +87,6 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 🔝 APP BAR
       appBar: AppBar(
         title: const Text("Edit task"),
         actions: [
@@ -97,19 +102,15 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         ],
       ),
 
-      // 💾 SAVE BUTTON (BOTTOM-RIGHT)
       floatingActionButton: FloatingActionButton(
         onPressed: updateTask,
         child: const Icon(Icons.check),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-      // 🧾 BODY
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            // 📝 TITLE
             TextField(
               controller: titleController,
               decoration: const InputDecoration(hintText: "Task title"),
@@ -117,7 +118,6 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
             const SizedBox(height: 12),
 
-            // ⏰ DATE & TIME
             Row(
               children: [
                 IconButton(
@@ -135,7 +135,6 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
             const SizedBox(height: 12),
 
-            // 📄 DESCRIPTION
             TextField(
               controller: descriptionController,
               decoration: const InputDecoration(hintText: "Description"),
@@ -144,17 +143,43 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
             const SizedBox(height: 12),
 
-            // 📂 LIST DROPDOWN
-            DropdownButtonFormField<String>(
-              value: selectedList,
-              decoration: const InputDecoration(labelText: "List"),
-              items: const [
-                DropdownMenuItem(value: "My Tasks", child: Text("My Tasks")),
-                DropdownMenuItem(value: "Work", child: Text("Work")),
-                DropdownMenuItem(value: "Study", child: Text("Study")),
-              ],
-              onChanged: (value) {
-                setState(() => selectedList = value!);
+            // ✅ SAFE LIST DROPDOWN
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .collection('lists')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox();
+                }
+
+                final listNames = snapshot.data!.docs
+                    .map((d) => d['name'] as String)
+                    .toList();
+
+                // 🔒 SAFETY CHECK (CRITICAL)
+                if (!listNames.contains(selectedList)) {
+                  selectedList =
+                      listNames.contains('My Tasks') ? 'My Tasks' : null;
+                }
+
+                return DropdownButtonFormField<String>(
+                  value: selectedList,
+                  decoration: const InputDecoration(labelText: "List"),
+                  items: listNames
+                      .map(
+                        (name) => DropdownMenuItem<String>(
+                          value: name,
+                          child: Text(name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => selectedList = value);
+                  },
+                );
               },
             ),
           ],
