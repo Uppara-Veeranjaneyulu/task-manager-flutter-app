@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:task_manager_app/presentation/widgets/create_list_dialog.dart';
 
 import '../../data/models/task_model.dart';
 import '../providers/theme_provider.dart';
@@ -20,7 +21,8 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       // 🔝 APP BAR
       appBar: AppBar(
-        title: Text(selectedList),
+        title: Text(selectedList ?? "All tasks"),
+
         actions: [
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, _) {
@@ -40,7 +42,18 @@ class HomeScreen extends StatelessWidget {
         child: ListView(
           children: [
             const DrawerHeader(
-              child: Text("Tasks", style: TextStyle(fontSize: 24)),
+              child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
+            ),
+
+            // ✅ ALL TASKS
+            ListTile(
+              leading: const Icon(Icons.check),
+              title: const Text("All tasks"),
+              selected: context.watch<ListProvider>().selectedList == null,
+              onTap: () {
+                context.read<ListProvider>().showAllTasks();
+                Navigator.pop(context);
+              },
             ),
 
             // ⭐ STARRED
@@ -57,37 +70,61 @@ class HomeScreen extends StatelessWidget {
 
             const Divider(),
 
-            // 📁 LISTS (GOOGLE TASKS STYLE)
+            // 📁 LISTS
             ExpansionTile(
               title: const Text("Lists"),
               children: [
-                ListTile(
-                  leading: const Icon(Icons.check),
-                  title: const Text("My Tasks"),
-                  onTap: () {
-                    context.read<ListProvider>().changeList("My Tasks");
-                    Navigator.pop(context);
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('lists')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const SizedBox();
+
+                    return Column(
+                      children: snapshot.data!.docs.map((doc) {
+                        final listName = doc['name'];
+
+                        return ListTile(
+                          title: Text(listName),
+                          selected:
+                              context.watch<ListProvider>().selectedList ==
+                              listName,
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, size: 18),
+                            onPressed: () async {
+                              // move tasks to My Tasks before delete
+                              final tasks = await FirebaseFirestore.instance
+                                  .collection('tasks')
+                                  .where('listName', isEqualTo: listName)
+                                  .get();
+
+                              for (var t in tasks.docs) {
+                                t.reference.update({'listName': 'My Tasks'});
+                              }
+
+                              await doc.reference.delete();
+                            },
+                          ),
+                          onTap: () {
+                            context.read<ListProvider>().selectList(listName);
+                            Navigator.pop(context);
+                          },
+                        );
+                      }).toList(),
+                    );
                   },
                 ),
-                ListTile(
-                  title: const Text("Work"),
-                  onTap: () {
-                    context.read<ListProvider>().changeList("Work");
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text("Study"),
-                  onTap: () {
-                    context.read<ListProvider>().changeList("Study");
-                    Navigator.pop(context);
-                  },
-                ),
+
+                // ➕ CREATE LIST
                 ListTile(
                   leading: const Icon(Icons.add),
                   title: const Text("Create new list"),
                   onTap: () {
-                    // future enhancement
+                    showDialog(
+                      context: context,
+                      builder: (_) => const CreateListDialog(),
+                    );
                   },
                 ),
               ],
