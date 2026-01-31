@@ -11,6 +11,7 @@ import 'add_task_screen.dart';
 import 'edit_task_screen.dart';
 import 'starred_tasks_screen.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,7 +22,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedList = context.watch<ListProvider>().selectedList;
 
-    // 🔹 Build task query (USER-SCOPED)
+    // 🔹 USER-SCOPED TASK QUERY
     Query taskQuery = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -59,7 +60,7 @@ class HomeScreen extends StatelessWidget {
                 child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
               ),
 
-              // 📋 MAIN MENU (SCROLLABLE PART)
+              // 📋 MAIN CONTENT (SCROLLABLE)
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
@@ -68,8 +69,7 @@ class HomeScreen extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.check),
                       title: const Text("All tasks"),
-                      selected:
-                          context.watch<ListProvider>().selectedList == null,
+                      selected: selectedList == null,
                       onTap: () {
                         context.read<ListProvider>().showAllTasks();
                         Navigator.pop(context);
@@ -113,11 +113,7 @@ class HomeScreen extends StatelessWidget {
 
                                 return ListTile(
                                   title: Text(listName),
-                                  selected:
-                                      context
-                                          .watch<ListProvider>()
-                                          .selectedList ==
-                                      listName,
+                                  selected: selectedList == listName,
                                   onTap: () {
                                     context.read<ListProvider>().selectList(
                                       listName,
@@ -130,6 +126,7 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
 
+                        // ➕ CREATE LIST
                         ListTile(
                           leading: const Icon(Icons.add),
                           title: const Text("Create new list"),
@@ -146,9 +143,22 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // 🔻 LOGOUT (ALWAYS AT BOTTOM)
+              // 🔻 BOTTOM ACTIONS
               const Divider(),
 
+              // 👤 PROFILE
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text("Profile"),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
+                },
+              ),
+
+              // 🚪 LOGOUT
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text(
@@ -157,11 +167,10 @@ class HomeScreen extends StatelessWidget {
                 ),
                 onTap: () async {
                   await FirebaseAuth.instance.signOut();
-
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
+                    (_) => false,
                   );
                 },
               ),
@@ -169,7 +178,6 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-
 
       // ➕ ADD TASK
       floatingActionButton: FloatingActionButton(
