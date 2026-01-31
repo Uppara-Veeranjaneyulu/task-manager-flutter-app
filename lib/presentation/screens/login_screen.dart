@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:task_manager_app/presentation/screens/phone_login_screen.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/google_auth_service.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,6 +51,19 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
+
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordScreen(),
+                  ),
+                );
+              },
+              child: const Text("Forgot password?"),
+            ),
+
             const SizedBox(height: 20),
             
             ElevatedButton(onPressed: login, child: const Text("Login")),
@@ -70,6 +85,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 }
               },
             ),
+
+            TextButton.icon(
+              icon: const Icon(Icons.phone),
+              label: const Text("Sign in with Mobile"),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PhoneLoginScreen()),
+                );
+              },
+            ),
+
             const SizedBox(height: 20),
             TextButton(
               onPressed: () {
