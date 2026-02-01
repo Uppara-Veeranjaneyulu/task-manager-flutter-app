@@ -13,10 +13,49 @@ import 'starred_tasks_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+import 'notification_settings_screen.dart';
+
+import '../../core/services/local_notification_service.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   String get uid => FirebaseAuth.instance.currentUser!.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔔 Phase 2 hook (safe to keep even if empty)
+    // _applyNotificationSettings();
+  }
+
+  // 🔔 Phase 2 (we’ll activate later)
+  /*
+  Future<void> _applyNotificationSettings() async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (!doc.exists) return;
+
+    final notifications = doc['notifications'];
+    if (notifications['dailyReminder'] == true) {
+      final time = notifications['reminderTime'].split(':');
+      await LocalNotificationService.scheduleDailyReminder(
+        hour: int.parse(time[0]),
+        minute: int.parse(time[1]),
+      );
+    } else {
+      await LocalNotificationService.cancelDailyReminder();
+    }
+  }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -49,18 +88,18 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+      
 
       // 📂 DRAWER
       drawer: Drawer(
         child: SafeArea(
           child: Column(
             children: [
-              // 🔝 HEADER
               const DrawerHeader(
                 child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
               ),
 
-              // 📋 MAIN CONTENT (SCROLLABLE)
+              // 📋 MAIN CONTENT
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
@@ -142,6 +181,20 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
+              ListTile(
+                leading: const Icon(Icons.notifications),
+                title: const Text("Notifications"),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+
 
               // 🔻 BOTTOM ACTIONS
               const Divider(),

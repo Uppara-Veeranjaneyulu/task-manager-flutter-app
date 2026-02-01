@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'presentation/screens/login_screen.dart';
 import 'package:provider/provider.dart';
+
+import 'firebase_options.dart';
+import 'core/services/local_notification_service.dart';
+
+import 'presentation/screens/login_screen.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/list_provider.dart';
 
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔥 Firebase init
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // 🔔 Local notifications init
+  await LocalNotificationService.init();
 
   runApp(
     MultiProvider(
@@ -20,7 +27,6 @@ void main() async {
       child: const MyApp(),
     ),
   );
-
 }
 
 class MyApp extends StatelessWidget {
@@ -28,7 +34,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
       title: 'Task Manager with Notifications',
