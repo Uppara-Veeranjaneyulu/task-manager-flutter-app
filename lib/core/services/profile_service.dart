@@ -23,4 +23,13 @@ class ProfileService {
 
     await _firestore.collection('users').doc(uid).update({'photoUrl': url});
   }
+
+  /// ✏️ Update name in Firestore
+  static Future<void> updateProfileName(String name) async {
+    final uid = _auth.currentUser!.uid;
+
+    await _firestore.collection('users').doc(uid).update({
+      'name': name,
+    });
+  }
 }

@@ -12,6 +12,7 @@ import 'edit_task_screen.dart';
 import 'starred_tasks_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import '../widgets/logout_dialog.dart';
 
 import 'notification_settings_screen.dart';
 
@@ -56,6 +57,44 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
   */
+
+//   Future<void> showLogoutDialog(BuildContext context) async {
+//   final shouldLogout = await showDialog<bool>(
+//     context: context,
+//     builder: (context) {
+//       return AlertDialog(
+//         title: const Text("Logout"),
+//         content: const Text(
+//           "Are you sure you want to logout?",
+//         ),
+//         actions: [
+//           TextButton(
+//             onPressed: () => Navigator.pop(context, false),
+//             child: const Text("Cancel"),
+//           ),
+//           TextButton(
+//             onPressed: () => Navigator.pop(context, true),
+//             child: const Text(
+//               "Logout",
+//               style: TextStyle(color: Colors.red),
+//             ),
+//           ),
+//         ],
+//       );
+//     },
+//   );
+
+//   if (shouldLogout == true) {
+//     await FirebaseAuth.instance.signOut();
+
+//     Navigator.pushAndRemoveUntil(
+//       context,
+//       MaterialPageRoute(builder: (_) => const LoginScreen()),
+//       (_) => false,
+//     );
+//   }
+// }
+
 
   @override
   Widget build(BuildContext context) {
@@ -213,20 +252,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // 🚪 LOGOUT
               ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  "Logout",
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () async {
-                  await FirebaseAuth.instance.signOut();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (_) => false,
-                  );
-                },
-              ),
+  leading: const Icon(Icons.logout, color: Colors.red),
+  title: const Text(
+    "Logout",
+    style: TextStyle(color: Colors.red),
+  ),
+  onTap: () async {
+    Navigator.pop(context); // close drawer
+    await showLogoutDialog(context);
+  },
+),
+
+
             ],
           ),
         ),

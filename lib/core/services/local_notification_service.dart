@@ -6,7 +6,7 @@ class LocalNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
-  /// 🔔 INIT
+  /// 🔔 INITIALIZE (CALL ON APP START)
   static Future<void> init() async {
     tz.initializeTimeZones();
 
@@ -14,12 +14,59 @@ class LocalNotificationService {
       '@mipmap/ic_launcher',
     );
 
-    const settings = InitializationSettings(android: androidSettings);
+    const settings = InitializationSettings(
+      android: androidSettings,
+    );
 
     await _notifications.initialize(settings);
   }
 
-  /// 🔔 SCHEDULE DAILY REMINDER (ANDROID 12+ SAFE)
+  // ============================================================
+  // ✅ INSTANT TEST (CONFIRMS NOTIFICATIONS WORK)
+  // ============================================================
+  static Future<void> testNotification() async {
+    await _notifications.show(
+      999,
+      'Test Notification',
+      'If you see this, notifications work ✅',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'test_channel',
+          'Test Notifications',
+          channelDescription: 'Instant test notification',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // ✅ SHORT DELAY TEST (BEST FOR DEBUGGING)
+  // ============================================================
+  static Future<void> testNotificationAfterSeconds(int seconds) async {
+  await Future.delayed(Duration(seconds: seconds));
+
+  await _notifications.show(
+    9999,
+    'Test Notification',
+    'This should appear after $seconds seconds 🔔',
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'test_channel',
+        'Test Notifications',
+        channelDescription: 'Immediate test notification',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    ),
+  );
+}
+
+
+  // ============================================================
+  // 🔔 DAILY REMINDER (BEST POSSIBLE LOCAL VERSION)
+  // ============================================================
   static Future<void> scheduleDailyReminder({
     required int hour,
     required int minute,
@@ -38,40 +85,23 @@ class LocalNotificationService {
           priority: Priority.high,
         ),
       ),
-
-      // ✅ THIS IS THE MAGIC LINE
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
-  /// ❌ CANCEL REMINDER
+  // ============================================================
+  // ❌ CANCEL DAILY REMINDER
+  // ============================================================
   static Future<void> cancelDailyReminder() async {
     await _notifications.cancel(1001);
   }
 
-
-static Future<void> testNotification() async {
-    await _notifications.show(
-      999,
-      'Test Notification',
-      'If you see this, notifications work ✅',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'test_channel',
-          'Test Channel',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-      ),
-    );
-  }
-
-  /// ⏰ NEXT INSTANCE
+  // ============================================================
+  // ⏰ CALCULATE NEXT TIME
+  // ============================================================
   static tz.TZDateTime _nextInstance(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
 
