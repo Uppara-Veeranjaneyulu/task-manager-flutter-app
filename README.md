@@ -24,14 +24,6 @@ A comprehensive Task Management application built with **Flutter** and **Firebas
 *   **AI Powered**: Integration with Google ML Kit.
 *   **Profile Management**: Update user profile and avatar.
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-=======
->>>>>>> Stashed changes
 ## 🛠️ Tech Stack
 
 *   **Frontend**: Flutter (Dart)
@@ -87,9 +79,8 @@ Contributions are welcome! Please fork the repository and submit a pull request.
 
 ## 📄 License
 
-<<<<<<< Updated upstream
+
 This project is open-source and available under the [MIT License](LICENSE).
->>>>>>> Stashed changes
+
 =======
-This project is open-source and available under the [MIT License](LICENSE).
->>>>>>> Stashed changes
+    

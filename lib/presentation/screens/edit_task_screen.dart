@@ -22,6 +22,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   DateTime? selectedDateTime;
   bool isStarred = false;
   String? selectedList; // ⚠️ nullable
+  String selectedPriority = 'Medium';
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     selectedDateTime = widget.task.dueDateTime;
     isStarred = widget.task.isStarred;
     selectedList = widget.task.listName;
+    selectedPriority = widget.task.priority;
   }
 
   Future<void> pickDateTime() async {
@@ -78,6 +80,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       'dueDateTime': selectedDateTime,
       'isStarred': isStarred,
       'listName': selectedList ?? 'My Tasks',
+      'priority': selectedPriority,
       'updatedAt': Timestamp.now(),
     });
 
@@ -139,6 +142,19 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               controller: descriptionController,
               decoration: const InputDecoration(hintText: "Description"),
               maxLines: 3,
+            ),
+
+            const SizedBox(height: 12),
+
+            const SizedBox(height: 12),
+
+            DropdownButtonFormField<String>(
+              value: selectedPriority,
+              decoration: const InputDecoration(labelText: "Priority"),
+              items: ['Low', 'Medium', 'High']
+                  .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                  .toList(),
+              onChanged: (val) => setState(() => selectedPriority = val!),
             ),
 
             const SizedBox(height: 12),

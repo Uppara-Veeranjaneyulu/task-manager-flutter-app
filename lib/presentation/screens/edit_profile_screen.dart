@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../core/services/profile_service.dart';
 
@@ -13,7 +14,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  File? selectedImage;
+  XFile? selectedImage;
   bool loading = false;
 
   late TextEditingController nameController;
@@ -45,7 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (result != null) {
       setState(() {
-        selectedImage = File(result.path);
+        selectedImage = result;
       });
     }
   }
@@ -57,10 +58,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       String? photoUrl;
 
+        // 🔹 Upload photo if changed
       // 🔹 Upload photo if changed
       if (selectedImage != null) {
+        print("🖼️ Selected image found. Uploading...");
         photoUrl = await ProfileService.uploadProfilePhoto(selectedImage!);
+        print("✅ Photo uploaded. URL: $photoUrl");
+        
+        print("🔄 Updating Firestore profile...");
         await ProfileService.updateProfilePhoto(photoUrl);
+        
+        print("🔄 Updating Auth profile...");
+        await user.updatePhotoURL(photoUrl); // Sync with Auth
+        print("✅ All profile updates complete.");
       }
 
       // 🔹 Update name if changed
@@ -97,9 +107,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: CircleAvatar(
                 radius: 50,
                 backgroundImage: selectedImage != null
-                    ? FileImage(selectedImage!)
+                    ? (kIsWeb
+                        ? NetworkImage(selectedImage!.path)
+                        : FileImage(File(selectedImage!.path)) as ImageProvider)
                     : (user.photoURL != null
-                        ? NetworkImage(user.photoURL!) as ImageProvider
+                        ? NetworkImage(user.photoURL!)
                         : null),
                 child: selectedImage == null && user.photoURL == null
                     ? const Icon(Icons.camera_alt, size: 30)
