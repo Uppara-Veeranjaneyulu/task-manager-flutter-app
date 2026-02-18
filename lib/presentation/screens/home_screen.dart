@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:lottie/lottie.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../data/models/task_model.dart';
 import '../providers/theme_provider.dart';
@@ -259,8 +261,39 @@ class _HomeScreenState extends State<HomeScreen> {
   ),
   onTap: () async {
     Navigator.pop(context); // close drawer
-    await showLogoutDialog(context);
-  },
+                    final shouldLogout = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text("Logout"),
+                        content: const Text("Are you sure you want to logout?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text(
+                              "Logout",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldLogout == true) {
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()),
+                          (_) => false,
+                        );
+                      }
+                    }
+                  },
 ),
 
 
@@ -275,7 +308,21 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddTaskScreen()),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const AddTaskScreen(),
+              transitionsBuilder: (_, animation, __, child) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  )),
+                  child: child,
+                );
+              },
+            ),
           );
         },
       ),
@@ -289,7 +336,25 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No tasks added yet"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Lottie Animation for Empty State
+                  SizedBox(
+                    height: 200,
+                    width: 200,
+                    child: Lottie.network(
+                      'https://assets10.lottiefiles.com/packages/lf20_w51pcehl.json', // Empty Box
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.inbox, size: 100, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text("No tasks added yet", style: TextStyle(fontSize: 18, color: Colors.grey)),
+                ],
+              ),
+            );
           }
 
           final tasks = snapshot.data!.docs.map((doc) {
@@ -341,15 +406,45 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       if (task.isStarred)
                         const Icon(Icons.star, color: Colors.amber),
+                      // Share Button
+                      IconButton(
+                        icon: const Icon(Icons.share, size: 20),
+                        onPressed: () {
+                           Share.share('${task.title}\n${task.description}');
+                        },
+                      ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(uid)
-                              .collection('tasks')
-                              .doc(task.id)
-                              .delete();
+                           showDialog(
+                             context: context,
+                             builder: (ctx) => AlertDialog(
+                               title: const Text("Delete Task"),
+                               content: const Text(
+                                   "Are you sure you want to delete this task?"),
+                               actions: [
+                                 TextButton(
+                                   onPressed: () => Navigator.pop(ctx),
+                                   child: const Text("Cancel"),
+                                 ),
+                                 TextButton(
+                                   onPressed: () {
+                                     FirebaseFirestore.instance
+                                         .collection('users')
+                                         .doc(uid)
+                                         .collection('tasks')
+                                         .doc(task.id)
+                                         .delete();
+                                     Navigator.pop(ctx);
+                                   },
+                                   child: const Text(
+                                     "Delete",
+                                     style: TextStyle(color: Colors.red),
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           );
                         },
                       ),
                     ],

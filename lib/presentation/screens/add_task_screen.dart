@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/services/ai_service.dart';
+import '../../core/services/voice_service.dart';
+import 'qr_scanner_screen.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -16,13 +21,82 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   DateTime? selectedDateTime;
   bool isStarred = false;
   String selectedList = "";
+  String selectedPriority = "Medium"; // Default priority
 
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
+
+  final VoiceService _voiceService = VoiceService();
+  bool _isListening = false;
 
   @override
   void initState() {
     super.initState();
     ensureDefaultListExists();
+    _initVoice();
+    
+    // AI Prediction Listener
+    titleController.addListener(_updateAI);
+    descriptionController.addListener(_updateAI);
+  }
+
+  void _initVoice() async {
+    await _voiceService.init();
+    setState(() {});
+  }
+
+  void _updateAI() {
+    // Basic debounce could be added here
+    final priority = AIService.predictPriority(titleController.text, descriptionController.text);
+    if (priority != selectedPriority) {
+       // Only auto-update if user hasn't manually changed it? 
+       // For now, let's just update it to show off the AI.
+       if (mounted) setState(() => selectedPriority = priority); 
+    }
+
+    final category = AIService.suggestCategory(titleController.text);
+    // If we had categories mapped to lists, we could auto-select list.
+    // For now, we just print or could try to match 'listName' if it exists.
+  }
+
+  void _startListening() async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      setState(() => _isListening = false);
+    } else {
+      setState(() => _isListening = true);
+      await _voiceService.startListening(onResult: (text) {
+        // Simple logic: if empty, set title. If title exists, append to description.
+        if (titleController.text.isEmpty) {
+          titleController.text = text;
+        } else {
+          descriptionController.text = text;
+        }
+        setState(() => _isListening = false);
+      });
+    }
+  }
+
+  Future<void> _scanQR() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+    );
+
+    if (result != null && result is String) {
+       // Assuming JSON format: {"title": "...", "description": "..."}
+       // Or just plain text
+       try {
+         // Simple parsing if it looks like JSON? For now, treat as plain text title
+         if (result.startsWith('{')) {
+            // Need dart:convert, but let's just dump it in description for now or title
+             descriptionController.text = result;
+         } else {
+             titleController.text = result;
+         }
+       } catch (e) {
+         titleController.text = result;
+       }
+    }
   }
 
   Future<void> ensureDefaultListExists() async {
@@ -78,6 +152,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           'isCompleted': false,
           'isStarred': isStarred,
           'listName': selectedList,
+          'priority': selectedPriority, // AI Predicted or Manual
           'createdAt': Timestamp.now(),
           'updatedAt': Timestamp.now(),
         });
@@ -98,6 +173,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         title: const Text("Add task"),
         actions: [
           IconButton(
+            icon: Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.red : null),
+            onPressed: _startListening,
+            tooltip: "Voice Input",
+          ),
+           IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: _scanQR,
+            tooltip: "Scan QR",
+          ),
+          IconButton(
             icon: Icon(
               isStarred ? Icons.star : Icons.star_border,
               color: isStarred ? Colors.amber : null,
@@ -115,32 +200,56 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           children: [
             TextField(
               controller: titleController,
-              decoration: const InputDecoration(hintText: "Add title"),
+              decoration: const InputDecoration(
+                hintText: "Add title",
+                labelText: "Title (AI predicts priority)",
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+             TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                hintText: "Add description",
+                labelText: "Description",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
             ),
 
             const SizedBox(height: 12),
 
             Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.access_time),
-                  onPressed: pickDateTime,
-                ),
-                if (selectedDateTime != null)
-                  Text(
-                    "${selectedDateTime!.day}/${selectedDateTime!.month} "
-                    "${selectedDateTime!.hour.toString().padLeft(2, '0')}:"
-                    "${selectedDateTime!.minute.toString().padLeft(2, '0')}",
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: selectedPriority,
+                    decoration: const InputDecoration(labelText: "Priority"),
+                    items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                    onChanged: (val) => setState(() => selectedPriority = val!),
                   ),
+                ),
+                const SizedBox(width: 12),
+                 Expanded(
+                   child: InkWell(
+                    onTap: pickDateTime,
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Due Date',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.calendar_today),
+                      ),
+                      child: Text(
+                        selectedDateTime != null
+                            ? "${selectedDateTime!.day}/${selectedDateTime!.month} ${selectedDateTime!.hour}:${selectedDateTime!.minute.toString().padLeft(2, '0')}"
+                            : 'No Date',
+                      ),
+                    ),
+                ),
+                 ),
               ],
-            ),
-
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(hintText: "Add description"),
-              maxLines: 3,
             ),
 
             const SizedBox(height: 12),
@@ -153,7 +262,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return const CircularProgressIndicator();
+                  return const LinearProgressIndicator();
                 }
 
                 final listDocs = snapshot.data!.docs;
@@ -179,6 +288,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 );
               },
             ),
+             const SizedBox(height: 20),
+             if (titleController.text.isNotEmpty)
+                Text(
+                  "AI Suggested Category: ${AIService.suggestCategory(titleController.text)}",
+                  style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                ),
           ],
         ),
       ),

@@ -8,6 +8,7 @@ class TaskModel {
   final bool isCompleted;
   final bool isStarred;
   final String listName;
+  final String priority;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -19,6 +20,7 @@ class TaskModel {
     required this.isCompleted,
     required this.isStarred,
     required this.listName,
+    required this.priority,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -39,6 +41,7 @@ class TaskModel {
       isCompleted: data['isCompleted'] ?? false,
       isStarred: data['isStarred'] ?? false,
       listName: data['listName'] ?? 'My Tasks',
+      priority: data['priority'] ?? 'Medium',
       createdAt: parseDate(data['createdAt']) ?? DateTime.now(),
       updatedAt: parseDate(data['updatedAt']) ?? DateTime.now(),
     );
