@@ -41,7 +41,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final result = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
+      imageQuality: 70,   // compress quality
+      maxWidth: 600,      // cap width  → profile pics don't need to be huge
+      maxHeight: 600,     // cap height → keeps upload size tiny (~30-80 KB)
     );
 
     if (result != null) {
@@ -58,30 +60,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       String? photoUrl;
 
-        // 🔹 Upload photo if changed
-      // 🔹 Upload photo if changed
       if (selectedImage != null) {
-        print("🖼️ Selected image found. Uploading...");
+        print("🖼️ Uploading photo...");
         photoUrl = await ProfileService.uploadProfilePhoto(selectedImage!);
-        print("✅ Photo uploaded. URL: $photoUrl");
-        
-        print("🔄 Updating Firestore profile...");
-        await ProfileService.updateProfilePhoto(photoUrl);
-        
-        print("🔄 Updating Auth profile...");
-        await user.updatePhotoURL(photoUrl); // Sync with Auth
-        print("✅ All profile updates complete.");
+        print("✅ Photo uploaded: $photoUrl");
+
+        // Fire Firestore + Auth updates in background — don't block navigation
+        ProfileService.updateProfilePhoto(photoUrl);
+        user.updatePhotoURL(photoUrl);
       }
 
-      // 🔹 Update name if changed
+      // Update name in background too
       final newName = nameController.text.trim();
       if (newName.isNotEmpty && newName != user.displayName) {
-        await user.updateDisplayName(newName);
-
-        await ProfileService.updateProfileName(newName);
+        user.updateDisplayName(newName);
+        ProfileService.updateProfileName(newName);
       }
 
+
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(
+                  selectedImage != null
+                      ? 'Profile photo updated successfully!'
+                      : 'Profile updated successfully!',
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
         Navigator.pop(context);
       }
     } catch (e) {

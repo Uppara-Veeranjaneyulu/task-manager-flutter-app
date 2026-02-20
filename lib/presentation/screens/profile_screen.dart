@@ -12,17 +12,7 @@ class ProfileScreen extends StatelessWidget {
 
   String get uid => FirebaseAuth.instance.currentUser!.uid;
 
-  // 🔢 PROFILE COMPLETION
-  int calculateProfileCompletion(Map<String, dynamic> data) {
-    int completed = 0;
 
-    if ((data['name'] ?? '').toString().isNotEmpty) completed++;
-    if ((data['email'] ?? '').toString().isNotEmpty) completed++;
-    if ((data['phone'] ?? '').toString().isNotEmpty) completed++;
-    if ((data['photoUrl'] ?? '').toString().isNotEmpty) completed++;
-
-    return (completed / 4 * 100).toInt();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +29,6 @@ class ProfileScreen extends StatelessWidget {
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
-          final completion = calculateProfileCompletion(data);
 
           return CustomScrollView(
             slivers: [
@@ -139,50 +128,6 @@ class ProfileScreen extends StatelessWidget {
                             ],
                           );
                         },
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // 📈 PROFILE COMPLETION
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.1),
-                              spreadRadius: 1,
-                              blurRadius: 5,
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text("Profile Completion",
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                                Text("$completion%",
-                                    style: const TextStyle(
-                                        color: Colors.blue,
-                                        fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            LinearProgressIndicator(
-                              value: completion / 100,
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(4),
-                              backgroundColor: Colors.grey[200],
-                              valueColor:
-                                  const AlwaysStoppedAnimation(Colors.blue),
-                            ),
-                          ],
-                        ),
                       ),
 
                       const SizedBox(height: 20),

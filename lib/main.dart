@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'core/services/local_notification_service.dart';
+import 'core/services/background_service.dart';
 
 import 'presentation/screens/login_screen.dart';
 import 'presentation/providers/theme_provider.dart';
@@ -17,6 +18,9 @@ Future<void> main() async {
 
   // 🔔 Local notifications init
   await LocalNotificationService.init();
+
+  // 🔧 Background Service Init
+  await BackgroundService.init();
 
   runApp(
     MultiProvider(

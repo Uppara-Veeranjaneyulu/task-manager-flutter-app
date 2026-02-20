@@ -1,0 +1,8 @@
+{
+    "name": "task-manager-upload-api",
+    "version": "1.0.0",
+    "description": "Vercel Blob upload API for task manager profile images",
+    "dependencies": {
+        "@vercel/blob": "^0.27.0"
+    }
+}

@@ -11,6 +11,7 @@ class TaskModel {
   final String priority;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? notificationId;
 
   TaskModel({
     required this.id,
@@ -23,6 +24,7 @@ class TaskModel {
     required this.priority,
     required this.createdAt,
     required this.updatedAt,
+    this.notificationId,
   });
 
   factory TaskModel.fromFirestore(Map<String, dynamic> data, String id) {
@@ -44,6 +46,7 @@ class TaskModel {
       priority: data['priority'] ?? 'Medium',
       createdAt: parseDate(data['createdAt']) ?? DateTime.now(),
       updatedAt: parseDate(data['updatedAt']) ?? DateTime.now(),
+      notificationId: data['notificationId'], // Nullable
     );
   }
 }

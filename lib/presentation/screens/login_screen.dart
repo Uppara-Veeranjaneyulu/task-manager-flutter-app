@@ -59,9 +59,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       debugPrint("Firebase Auth success: ${result.user?.uid}");
       final user = result.user!;
       
-      debugPrint("Creating user in Firestore if needed...");
-      await UserService.createUserIfNotExists(user); 
-      debugPrint("User created/updated in Firestore.");
+      // Fire Firestore update in background — don't block navigation on it
+      UserService.createUserIfNotExists(user);
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -242,9 +241,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         try {
                           final result = await GoogleAuthService.signInWithGoogle();
 
-                          await UserService.createUserIfNotExists(
-                            result.user!,
-                          );
+                          // Fire Firestore update in background
+                          UserService.createUserIfNotExists(result.user!);
 
                           if (mounted) {
                             Navigator.pushReplacement(

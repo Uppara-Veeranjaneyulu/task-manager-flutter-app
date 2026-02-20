@@ -100,6 +100,42 @@ class LocalNotificationService {
   }
 
   // ============================================================
+  // 📅 SCHEDULE NOTIFICATION (ONE-OFF)
+  // ============================================================
+  static Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    await _notifications.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(scheduledDate, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'task_reminders',
+          'Task Reminders',
+          channelDescription: 'Reminders for specific tasks',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  // ============================================================
+  // ❌ CANCEL SPECIFIC NOTIFICATION
+  // ============================================================
+  static Future<void> cancelNotification(int id) async {
+    await _notifications.cancel(id);
+  }
+
+  // ============================================================
   // ⏰ CALCULATE NEXT TIME
   // ============================================================
   static tz.TZDateTime _nextInstance(int hour, int minute) {

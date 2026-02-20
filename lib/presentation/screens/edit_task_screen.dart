@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../data/models/task_model.dart';
+import '../../core/services/local_notification_service.dart';
+import '../../core/services/background_service.dart';
 
 class EditTaskScreen extends StatefulWidget {
   final TaskModel task;
@@ -69,6 +71,48 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   }
 
   Future<void> updateTask() async {
+    // 🔔 NOTIFICATION LOGIC
+    int? notificationId = widget.task.notificationId;
+
+    // 1. Cancel old notification if it exists (Local + Background)
+    if (notificationId != null) {
+      await LocalNotificationService.cancelNotification(notificationId);
+      await BackgroundService.cancelEmailTask(notificationId);
+    }
+
+    // 2. Schedule new notification if we have a due date
+    if (selectedDateTime != null) {
+      // Create new ID if none existed, or reuse (but simpler to just make new ID to avoid collisions is fine, 
+      // but let's reuse or generate new. Generating new is safer for "unique" pending intents usually)
+      notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final scheduledTime = selectedDateTime!.subtract(const Duration(minutes: 10));
+      
+      if (scheduledTime.isAfter(DateTime.now())) {
+        await LocalNotificationService.scheduleNotification(
+          id: notificationId,
+          title: "Reminder: ${titleController.text}",
+          body: "Your task is due in 10 minutes!",
+          scheduledDate: scheduledTime,
+        );
+
+        // 📧 Schedule Real Email via Workmanager
+        final delay = scheduledTime.difference(DateTime.now());
+        if (delay.inSeconds > 0) {
+           await BackgroundService.scheduleEmailTask(
+            id: notificationId,
+            toEmail: FirebaseAuth.instance.currentUser?.email ?? "unknown@user.com",
+            subject: "Updated Reminder: ${titleController.text}",
+            body: "Your task '${titleController.text}' is now due at $selectedDateTime.",
+            initialDelay: delay,
+          );
+        }
+      }
+    } else {
+      // If date cleared, ensure ID is nulled out in DB
+      notificationId = null; 
+    }
+
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -82,6 +126,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       'listName': selectedList ?? 'My Tasks',
       'priority': selectedPriority,
       'updatedAt': Timestamp.now(),
+      'notificationId': notificationId,
     });
 
     Navigator.pop(context);

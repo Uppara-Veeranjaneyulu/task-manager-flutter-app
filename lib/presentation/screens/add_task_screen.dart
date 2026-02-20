@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/services/ai_service.dart';
 import '../../core/services/voice_service.dart';
+import '../../core/services/local_notification_service.dart';
+import '../../core/services/background_service.dart';
 import 'qr_scanner_screen.dart';
 
 class AddTaskScreen extends StatefulWidget {
@@ -141,6 +143,35 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> saveTask() async {
     if (titleController.text.trim().isEmpty || selectedList.isEmpty) return;
 
+    int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    if (selectedDateTime != null) {
+      final scheduledTime = selectedDateTime!.subtract(const Duration(minutes: 10));
+      
+      if (scheduledTime.isAfter(DateTime.now())) {
+        await LocalNotificationService.scheduleNotification(
+          id: notificationId,
+          title: "Reminder: ${titleController.text}",
+          body: "Your task is due in 10 minutes!",
+          scheduledDate: scheduledTime,
+        );
+
+        // 📧 Schedule Real Email via Workmanager
+        final delay = scheduledTime.difference(DateTime.now());
+        // Workmanager works best with delays > 15 mins but can work sooner in debug.
+        // We'll schedule it.
+        if (delay.inSeconds > 0) {
+           await BackgroundService.scheduleEmailTask(
+            id: notificationId,
+            toEmail: FirebaseAuth.instance.currentUser?.email ?? "unknown@user.com",
+            subject: "Reminder: ${titleController.text}",
+            body: "Your task '${titleController.text}' is due at $selectedDateTime.",
+            initialDelay: delay,
+          );
+        }
+      }
+    }
+
     await FirebaseFirestore.instance
         .collection('users')
         .doc(currentUserId)
@@ -155,6 +186,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           'priority': selectedPriority, // AI Predicted or Manual
           'createdAt': Timestamp.now(),
           'updatedAt': Timestamp.now(),
+          'notificationId': notificationId,
         });
 
     Navigator.pop(context);

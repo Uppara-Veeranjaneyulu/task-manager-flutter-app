@@ -1,44 +1,61 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ProfileService {
   static final _auth = FirebaseAuth.instance;
   static final _firestore = FirebaseFirestore.instance;
-  static final _storage = FirebaseStorage.instance;
+
+  //  Paste your BLOB_READ_WRITE_TOKEN from the Vercel Blob dashboard (.env.local tab)
+  static const String _blobToken = 'vercel_blob_rw_VEa0SlcBWnJAt6aC_SMJ1np0INUW51Hf58rYOEo0lpy32Nx';
 
   static Future<String> uploadProfilePhoto(XFile file) async {
     try {
-      print("🚀 Starting uploadProfilePhoto...");
+      print("🚀 Uploading to Vercel Blob...");
       final uid = _auth.currentUser!.uid;
-      final ref = _storage.ref().child('users').child(uid).child('profile.jpg');
 
-      if (kIsWeb) {
-        print("💻 Running on Web. Reading bytes...");
-        final bytes = await file.readAsBytes();
-        print("✅ Bytes read: ${bytes.length}. Uploading to Storage...");
-        
-        final task = ref.putData(
-            bytes, SettableMetadata(contentType: 'image/jpeg'));
-        
-        task.snapshotEvents.listen((event) {
-          print("📸 Upload Progress: ${(event.bytesTransferred / event.totalBytes) * 100}%");
-        });
+      final bytes = await file.readAsBytes();
+      print("📦 Image size: ${bytes.length} bytes");
 
-        await task;
-        print("✅ Upload complete.");
-      } else {
-        print("📱 Running on Mobile. Uploading file...");
-        await ref.putFile(File(file.path));
-        print("✅ File upload complete.");
+      // Vercel Blob REST API — addRandomSuffix=0 keeps the same path on re-upload
+      final uri = Uri.parse(
+        'https://blob.vercel-storage.com/avatars/$uid/profile.jpg'
+        '?addRandomSuffix=0',
+      );
+
+      final response = await http
+          .put(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $_blobToken',
+              'Content-Type': 'image/jpeg',
+              'x-api-version': '7',
+            },
+            body: bytes,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw Exception(
+              'Upload timed out. Check your internet connection.',
+            ),
+          );
+
+      print("📡 Response status: ${response.statusCode}");
+      print("📡 Response body: ${response.body}");
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+          'Vercel Blob upload failed (${response.statusCode}): ${response.body}',
+        );
       }
 
-      print("🔗 Getting download URL...");
-      final url = await ref.getDownloadURL();
-      print("✅ Download URL retrieved: $url");
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final url = json['url'] as String;
+      print("✅ Vercel Blob URL: $url");
       return url;
     } catch (e) {
       print("❌ Error in uploadProfilePhoto: $e");
@@ -48,16 +65,12 @@ class ProfileService {
 
   static Future<void> updateProfilePhoto(String url) async {
     final uid = _auth.currentUser!.uid;
-
     await _firestore.collection('users').doc(uid).update({'photoUrl': url});
   }
 
   /// ✏️ Update name in Firestore
   static Future<void> updateProfileName(String name) async {
     final uid = _auth.currentUser!.uid;
-
-    await _firestore.collection('users').doc(uid).update({
-      'name': name,
-    });
+    await _firestore.collection('users').doc(uid).update({'name': name});
   }
 }
