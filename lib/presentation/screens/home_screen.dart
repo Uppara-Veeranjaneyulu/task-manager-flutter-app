@@ -435,7 +435,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                          .collection('tasks')
                                          .doc(task.id)
                                          .delete();
-                                     Navigator.pop(ctx);
+                                      Navigator.pop(ctx);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Row(
+                                            children: [
+                                              Icon(Icons.delete, color: Colors.white),
+                                              SizedBox(width: 10),
+                                              Text('Task deleted!'),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
                                    },
                                    child: const Text(
                                      "Delete",

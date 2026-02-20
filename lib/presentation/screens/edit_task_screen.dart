@@ -113,7 +113,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       notificationId = null; 
     }
 
-    await FirebaseFirestore.instance
+    // Fire Firestore update in background — don't block navigation
+    FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('tasks')
@@ -129,7 +130,23 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       'notificationId': notificationId,
     });
 
-    Navigator.pop(context);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.edit, color: Colors.white),
+              SizedBox(width: 10),
+              Text('Task updated!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Navigator.popUntil(context, (route) => route.isFirst);
+    }
   }
 
   @override

@@ -172,7 +172,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       }
     }
 
-    await FirebaseFirestore.instance
+    // Fire Firestore write in background — don't block navigation
+    FirebaseFirestore.instance
         .collection('users')
         .doc(currentUserId)
         .collection('tasks')
@@ -183,13 +184,29 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           'isCompleted': false,
           'isStarred': isStarred,
           'listName': selectedList,
-          'priority': selectedPriority, // AI Predicted or Manual
+          'priority': selectedPriority,
           'createdAt': Timestamp.now(),
           'updatedAt': Timestamp.now(),
           'notificationId': notificationId,
         });
 
-    Navigator.pop(context);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 10),
+              Text('Task created!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Navigator.popUntil(context, (route) => route.isFirst);
+    }
   }
 
   @override
