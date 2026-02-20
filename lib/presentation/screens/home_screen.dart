@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,15 +28,47 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  String get uid => FirebaseAuth.instance.currentUser!.uid;
+// 🕐 Isolated clock widget — only this tiny widget rebuilds every second
+class _LiveClock extends StatefulWidget {
+  const _LiveClock();
+  @override
+  State<_LiveClock> createState() => _LiveClockState();
+}
+
+class _LiveClockState extends State<_LiveClock> {
+  late DateTime _now;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // 🔔 Phase 2 hook (safe to keep even if empty)
-    // _applyNotificationSettings();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
   }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    final date = '${days[_now.weekday - 1]}, ${_now.day} ${months[_now.month - 1]} ${_now.year}';
+    final time = '${_now.hour.toString().padLeft(2,'0')}:${_now.minute.toString().padLeft(2,'0')}:${_now.second.toString().padLeft(2,'0')}';
+    return Text(
+      '$date  •  $time',
+      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+    );
+  }
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String get uid => FirebaseAuth.instance.currentUser!.uid;
 
   // 🔔 Phase 2 (we’ll activate later)
   /*
@@ -261,7 +294,16 @@ class _HomeScreenState extends State<HomeScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(selectedList ?? 'All Tasks'),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                selectedList ?? 'All Tasks',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const _LiveClock(),
+            ],
+          ),
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.checklist), text: 'Active'),

@@ -6,24 +6,42 @@ class LocalNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
-  /// 🔔 INITIALIZE (CALL ON APP START)
+  static AndroidFlutterLocalNotificationsPlugin? get _android =>
+      _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+
+  // ── Init ──────────────────────────────────────────────────────────────────
   static Future<void> init() async {
     tz.initializeTimeZones();
+    // ✅ CRITICAL: set to IST — without this tz.local = UTC
+    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
 
-    const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    await _notifications.initialize(
+      const InitializationSettings(android: androidSettings),
     );
-
-    const settings = InitializationSettings(
-      android: androidSettings,
-    );
-
-    await _notifications.initialize(settings);
   }
 
-  // ============================================================
-  // ✅ INSTANT TEST (CONFIRMS NOTIFICATIONS WORK)
-  // ============================================================
+  // ── Permission helpers ────────────────────────────────────────────────────
+
+  /// Returns true if the app can schedule exact alarms (Android 12+).
+  static Future<bool> canScheduleExactAlarms() async {
+    return await _android?.canScheduleExactNotifications() ?? true;
+  }
+
+  /// Opens Settings → Alarms & reminders so the user can grant the permission.
+  static Future<void> requestExactAlarmsPermission() async {
+    await _android?.requestExactAlarmsPermission();
+  }
+
+  /// Request notification display permission (Android 13+).
+  static Future<void> requestNotificationPermission() async {
+    await _android?.requestNotificationsPermission();
+  }
+
+  // ── Test now ──────────────────────────────────────────────────────────────
   static Future<void> testNotification() async {
     await _notifications.show(
       999,
@@ -34,74 +52,79 @@ class LocalNotificationService {
           'test_channel',
           'Test Notifications',
           channelDescription: 'Instant test notification',
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: Importance.max,
+          priority: Priority.max,
         ),
       ),
     );
   }
 
-  // ============================================================
-  // ✅ SHORT DELAY TEST (BEST FOR DEBUGGING)
-  // ============================================================
+  // ── Test in N seconds ────────────────────────────────────────────────────
   static Future<void> testNotificationAfterSeconds(int seconds) async {
-  await Future.delayed(Duration(seconds: seconds));
-
-  await _notifications.show(
-    9999,
-    'Test Notification',
-    'This should appear after $seconds seconds 🔔',
-    const NotificationDetails(
-      android: AndroidNotificationDetails(
-        'test_channel',
-        'Test Notifications',
-        channelDescription: 'Immediate test notification',
-        importance: Importance.high,
-        priority: Priority.high,
+    final scheduled =
+        tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
+    await _notifications.zonedSchedule(
+      9999,
+      'Test Notification',
+      'This appeared after $seconds seconds 🔔',
+      scheduled,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'test_channel',
+          'Test Notifications',
+          channelDescription: 'Delayed test notification',
+          importance: Importance.max,
+          priority: Priority.max,
+        ),
       ),
-    ),
-  );
-}
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
 
+  // ── Daily reminder ────────────────────────────────────────────────────────
 
-  // ============================================================
-  // 🔔 DAILY REMINDER (BEST POSSIBLE LOCAL VERSION)
-  // ============================================================
-  static Future<void> scheduleDailyReminder({
+  /// Returns false if SCHEDULE_EXACT_ALARM permission not granted (Android 12+).
+  /// Caller should call [requestExactAlarmsPermission] first.
+  static Future<bool> scheduleDailyReminder({
     required int hour,
     required int minute,
   }) async {
+    // Check exact alarm permission
+    final canSchedule = await canScheduleExactAlarms();
+    if (!canSchedule) {
+      return false; // caller must request permission
+    }
+
     await _notifications.zonedSchedule(
       1001,
-      'Daily Reminder',
-      'Don’t forget to check your tasks 📋',
+      '📋 Daily Task Reminder',
+      "Don't forget to check your tasks for today!",
       _nextInstance(hour, minute),
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_reminder',
           'Daily Reminder',
           channelDescription: 'Daily task reminder',
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: Importance.max,
+          priority: Priority.max,
+          playSound: true,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
+      matchDateTimeComponents: DateTimeComponents.time, // repeat daily
     );
+    return true;
   }
 
-  // ============================================================
-  // ❌ CANCEL DAILY REMINDER
-  // ============================================================
   static Future<void> cancelDailyReminder() async {
     await _notifications.cancel(1001);
   }
 
-  // ============================================================
-  // 📅 SCHEDULE NOTIFICATION (ONE-OFF)
-  // ============================================================
+  // ── One-off task notification ─────────────────────────────────────────────
   static Future<void> scheduleNotification({
     required int id,
     required String title,
@@ -118,8 +141,8 @@ class LocalNotificationService {
           'task_reminders',
           'Task Reminders',
           channelDescription: 'Reminders for specific tasks',
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: Importance.max,
+          priority: Priority.max,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -128,19 +151,13 @@ class LocalNotificationService {
     );
   }
 
-  // ============================================================
-  // ❌ CANCEL SPECIFIC NOTIFICATION
-  // ============================================================
   static Future<void> cancelNotification(int id) async {
     await _notifications.cancel(id);
   }
 
-  // ============================================================
-  // ⏰ CALCULATE NEXT TIME
-  // ============================================================
+  // ── Helper ────────────────────────────────────────────────────────────────
   static tz.TZDateTime _nextInstance(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-
     var scheduled = tz.TZDateTime(
       tz.local,
       now.year,
@@ -149,11 +166,9 @@ class LocalNotificationService {
       hour,
       minute,
     );
-
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
-
     return scheduled;
   }
 }
