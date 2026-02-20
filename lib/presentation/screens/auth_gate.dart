@@ -12,19 +12,23 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Loading
+        // Still initializing — show spinner
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Logged in
-        if (snapshot.hasData) {
+        // Use stream data OR the synchronously-cached currentUser.
+        // Firebase briefly emits null before it finishes reading the
+        // persisted token from disk — this fallback prevents the login
+        // screen from flashing on every cold start.
+        final user = snapshot.data ?? FirebaseAuth.instance.currentUser;
+
+        if (user != null) {
           return const HomeScreen();
         }
 
-        // Logged out
         return const LoginScreen();
       },
     );
