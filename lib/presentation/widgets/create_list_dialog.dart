@@ -19,7 +19,8 @@ class _CreateListDialogState extends State<CreateListDialog> {
 
     if (name.isEmpty) return;
 
-    await FirebaseFirestore.instance
+    // Fire-and-forget — don't block on Firestore, dialog closes instantly
+    FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('lists')

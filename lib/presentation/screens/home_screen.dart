@@ -98,37 +98,185 @@ class _HomeScreenState extends State<HomeScreen> {
 // }
 
 
+  Widget _buildTaskList(BuildContext context, String uid, Query baseQuery, bool completed) {
+    final query = baseQuery.where('isCompleted', isEqualTo: completed);
+    return StreamBuilder<QuerySnapshot>(
+      stream: query.orderBy('createdAt', descending: true).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: 200,
+                  width: 200,
+                  child: Lottie.network(
+                    'https://assets10.lottiefiles.com/packages/lf20_w51pcehl.json',
+                    errorBuilder: (context, error, stackTrace) =>
+                        Icon(completed ? Icons.check_circle_outline : Icons.inbox,
+                            size: 100, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  completed ? 'No completed tasks yet' : 'No tasks added yet',
+                  style: const TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final tasks = snapshot.data!.docs
+            .map((doc) => TaskModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
+            .toList();
+
+        return ListView.builder(
+          itemCount: tasks.length,
+          itemBuilder: (context, index) {
+            final task = tasks[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: ListTile(
+                leading: completed
+                    ? IconButton(
+                        icon: const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                        tooltip: 'Mark as active',
+                        onPressed: () {
+                          FirebaseFirestore.instance
+                              .collection('users').doc(uid).collection('tasks').doc(task.id)
+                              .update({'isCompleted': false, 'updatedAt': Timestamp.now()});
+                        },
+                      )
+                    : Checkbox(
+                        value: false,
+                        activeColor: Colors.green,
+                        onChanged: (_) {
+                          FirebaseFirestore.instance
+                              .collection('users').doc(uid).collection('tasks').doc(task.id)
+                              .update({'isCompleted': true, 'updatedAt': Timestamp.now()});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Row(children: [
+                                Icon(Icons.check_circle, color: Colors.white),
+                                SizedBox(width: 10),
+                                Text('Task marked as completed!'),
+                              ]),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                title: Text(
+                  task.title,
+                  style: TextStyle(
+                    decoration: completed ? TextDecoration.lineThrough : null,
+                    color: completed ? Colors.grey : null,
+                  ),
+                ),
+                subtitle: task.description.isNotEmpty
+                    ? Text(task.description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: completed ? Colors.grey : null))
+                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (task.isStarred) const Icon(Icons.star, color: Colors.amber),
+                    IconButton(
+                      icon: const Icon(Icons.share, size: 20),
+                      onPressed: () => Share.share('\${task.title}\n\${task.description}'),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete Task'),
+                            content: const Text('Are you sure you want to delete this task?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  FirebaseFirestore.instance
+                                      .collection('users').doc(uid).collection('tasks').doc(task.id)
+                                      .delete();
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Row(children: [
+                                        Icon(Icons.delete, color: Colors.white),
+                                        SizedBox(width: 10),
+                                        Text('Task deleted!'),
+                                      ]),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                onTap: completed ? null : () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => EditTaskScreen(task: task)));
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedList = context.watch<ListProvider>().selectedList;
 
-    // 🔹 USER-SCOPED TASK QUERY
-    Query taskQuery = FirebaseFirestore.instance
+    Query baseQuery = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('tasks');
 
     if (selectedList != null) {
-      taskQuery = taskQuery.where('listName', isEqualTo: selectedList);
+      baseQuery = baseQuery.where('listName', isEqualTo: selectedList);
     }
 
-    return Scaffold(
-      // 🔝 APP BAR
-      appBar: AppBar(
-        title: Text(selectedList ?? "All tasks"),
-        actions: [
-          Consumer<ThemeProvider>(
-            builder: (_, themeProvider, __) {
-              return IconButton(
-                icon: Icon(
-                  themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                ),
-                onPressed: themeProvider.toggleTheme,
-              );
-            },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(selectedList ?? 'All Tasks'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.checklist), text: 'Active'),
+              Tab(icon: Icon(Icons.check_circle_outline), text: 'Completed'),
+            ],
           ),
-        ],
-      ),
+          actions: [
+            Consumer<ThemeProvider>(
+              builder: (_, themeProvider, __) => IconButton(
+                icon: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode),
+                onPressed: themeProvider.toggleTheme,
+              ),
+            ),
+          ],
+        ),
       
 
       // 📂 DRAWER
@@ -190,16 +338,62 @@ class _HomeScreenState extends State<HomeScreen> {
                             return Column(
                               children: snapshot.data!.docs.map((doc) {
                                 final listName = doc['name'] as String;
+                                final docId = doc.id;
 
                                 return ListTile(
                                   title: Text(listName),
                                   selected: selectedList == listName,
                                   onTap: () {
-                                    context.read<ListProvider>().selectList(
-                                      listName,
-                                    );
+                                    context.read<ListProvider>().selectList(listName);
                                     Navigator.pop(context);
                                   },
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                    tooltip: 'Delete list',
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Delete List'),
+                                          content: Text('Delete "$listName"? Tasks in this list will not be deleted.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(ctx),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                FirebaseFirestore.instance
+                                                    .collection('users')
+                                                    .doc(uid)
+                                                    .collection('lists')
+                                                    .doc(docId)
+                                                    .delete();
+                                                if (selectedList == listName) {
+                                                  context.read<ListProvider>().showAllTasks();
+                                                }
+                                                Navigator.pop(ctx);
+                                                Navigator.pop(context);
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Row(children: [
+                                                      const Icon(Icons.delete, color: Colors.white),
+                                                      const SizedBox(width: 10),
+                                                      Text('"$listName" deleted!'),
+                                                    ]),
+                                                    backgroundColor: Colors.red,
+                                                    behavior: SnackBarBehavior.floating,
+                                                    duration: const Duration(seconds: 2),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 );
                               }).toList(),
                             );
@@ -302,180 +496,38 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      // ➕ ADD TASK
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const AddTaskScreen(),
-              transitionsBuilder: (_, animation, __, child) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 1),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  )),
-                  child: child,
-                );
-              },
-            ),
-          );
-        },
-      ),
-
-      // 📋 TASK LIST
-      body: StreamBuilder<QuerySnapshot>(
-        stream: taskQuery.orderBy('createdAt', descending: true).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Lottie Animation for Empty State
-                  SizedBox(
-                    height: 200,
-                    width: 200,
-                    child: Lottie.network(
-                      'https://assets10.lottiefiles.com/packages/lf20_w51pcehl.json', // Empty Box
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.inbox, size: 100, color: Colors.grey),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text("No tasks added yet", style: TextStyle(fontSize: 18, color: Colors.grey)),
-                ],
+        // ➕ ADD TASK
+        floatingActionButton: FloatingActionButton(
+          child: const Icon(Icons.add),
+          onPressed: () {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const AddTaskScreen(),
+                transitionsBuilder: (_, animation, __, child) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    )),
+                    child: child,
+                  );
+                },
               ),
             );
-          }
+          },
+        ),
 
-          final tasks = snapshot.data!.docs.map((doc) {
-            return TaskModel.fromFirestore(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
-          }).toList();
-
-          return ListView.builder(
-            itemCount: tasks.length,
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  leading: Checkbox(
-                    value: task.isCompleted,
-                    onChanged: (value) {
-                      FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(uid)
-                          .collection('tasks')
-                          .doc(task.id)
-                          .update({
-                            'isCompleted': value,
-                            'updatedAt': Timestamp.now(),
-                          });
-                    },
-                  ),
-                  title: Text(
-                    task.title,
-                    style: TextStyle(
-                      decoration: task.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                  ),
-                  subtitle: task.description.isNotEmpty
-                      ? Text(
-                          task.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      : null,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (task.isStarred)
-                        const Icon(Icons.star, color: Colors.amber),
-                      // Share Button
-                      IconButton(
-                        icon: const Icon(Icons.share, size: 20),
-                        onPressed: () {
-                           Share.share('${task.title}\n${task.description}');
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                           showDialog(
-                             context: context,
-                             builder: (ctx) => AlertDialog(
-                               title: const Text("Delete Task"),
-                               content: const Text(
-                                   "Are you sure you want to delete this task?"),
-                               actions: [
-                                 TextButton(
-                                   onPressed: () => Navigator.pop(ctx),
-                                   child: const Text("Cancel"),
-                                 ),
-                                 TextButton(
-                                   onPressed: () {
-                                     FirebaseFirestore.instance
-                                         .collection('users')
-                                         .doc(uid)
-                                         .collection('tasks')
-                                         .doc(task.id)
-                                         .delete();
-                                      Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Row(
-                                            children: [
-                                              Icon(Icons.delete, color: Colors.white),
-                                              SizedBox(width: 10),
-                                              Text('Task deleted!'),
-                                            ],
-                                          ),
-                                          backgroundColor: Colors.red,
-                                          behavior: SnackBarBehavior.floating,
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                   },
-                                   child: const Text(
-                                     "Delete",
-                                     style: TextStyle(color: Colors.red),
-                                   ),
-                                 ),
-                               ],
-                             ),
-                           );
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EditTaskScreen(task: task),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
+        // 📋 TABBED TASK LISTS
+        body: TabBarView(
+          children: [
+            _buildTaskList(context, uid, baseQuery, false),
+            _buildTaskList(context, uid, baseQuery, true),
+          ],
+        ),
       ),
     );
   }
