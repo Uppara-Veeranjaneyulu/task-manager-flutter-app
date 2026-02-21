@@ -16,8 +16,11 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Light background for contrast
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
@@ -34,14 +37,16 @@ class ProfileScreen extends StatelessWidget {
             slivers: [
               // 🎨 GRADIENT HEADER
               SliverAppBar(
-                expandedHeight: 280.0, // Increased height to prevent overflow
+                expandedHeight: 280.0,
                 floating: false,
                 pinned: true,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.blue, Colors.purple],
+                        colors: isDark 
+                            ? [colorScheme.primaryContainer, colorScheme.secondaryContainer]
+                            : [Colors.blue, Colors.purple],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -53,29 +58,27 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 40),
                           CircleAvatar(
                             radius: 50,
-                            backgroundImage:
-                                (data['photoUrl'] ?? '').toString().isNotEmpty
+                            backgroundImage: (data['photoUrl'] ?? '').toString().isNotEmpty
                                     ? NetworkImage(data['photoUrl'])
                                     : null,
-                            backgroundColor: Colors.white,
+                            backgroundColor: isDark ? colorScheme.surface : Colors.white,
                             child: (data['photoUrl'] ?? '').toString().isEmpty
-                                ? const Icon(Icons.person,
-                                    size: 50, color: Colors.grey)
+                                ? Icon(Icons.person, size: 50, color: isDark ? colorScheme.onSurface : Colors.grey)
                                 : null,
                           ),
                           const SizedBox(height: 10),
                           Text(
                             data['name'] ?? 'User',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: isDark ? colorScheme.onPrimaryContainer : Colors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
                             data['email'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: isDark ? colorScheme.onPrimaryContainer.withOpacity(0.7) : Colors.white70,
                               fontSize: 14,
                             ),
                           ),
@@ -104,27 +107,31 @@ class ProfileScreen extends StatelessWidget {
                           }
                           final tasks = taskSnapshot.data!.docs;
                           final total = tasks.length;
-                          final completed = tasks
-                              .where((doc) => doc['isCompleted'] == true)
-                              .length;
+                          final completed = tasks.where((doc) => doc['isCompleted'] == true).length;
                           final pending = total - completed;
 
                           return Row(
                             children: [
-                              _buildStatCard("Total", total.toString(),
-                                  Colors.blue.shade100, Colors.blue),
+                              _buildStatCard(
+                                "Total", 
+                                total.toString(), 
+                                isDark ? colorScheme.primaryContainer : Colors.blue.shade100, 
+                                isDark ? colorScheme.onPrimaryContainer : Colors.blue,
+                              ),
                               const SizedBox(width: 10),
                               _buildStatCard(
-                                  "Done",
-                                  completed.toString(),
-                                  Colors.green.shade100,
-                                  Colors.green),
+                                "Done", 
+                                completed.toString(), 
+                                isDark ? colorScheme.secondaryContainer : Colors.green.shade100, 
+                                isDark ? colorScheme.onSecondaryContainer : Colors.green,
+                              ),
                               const SizedBox(width: 10),
                               _buildStatCard(
-                                  "Pending",
-                                  pending.toString(),
-                                  Colors.orange.shade100,
-                                  Colors.orange),
+                                "Pending", 
+                                pending.toString(), 
+                                isDark ? colorScheme.tertiaryContainer : Colors.orange.shade100, 
+                                isDark ? colorScheme.onTertiaryContainer : Colors.orange,
+                              ),
                             ],
                           );
                         },
@@ -139,8 +146,7 @@ class ProfileScreen extends StatelessWidget {
                         title: "Edit Profile",
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) => const EditProfileScreen()),
+                          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                         ),
                       ),
                       _buildMenuCard(
@@ -149,9 +155,7 @@ class ProfileScreen extends StatelessWidget {
                         title: "Notifications",
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  const NotificationSettingsScreen()),
+                          MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
                         ),
                       ),
                       _buildMenuCard(
@@ -160,15 +164,13 @@ class ProfileScreen extends StatelessWidget {
                         title: "Change Password",
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) => const ChangePasswordScreen()),
+                          MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
                         ),
                       ),
                       _buildMenuCard(
                         context,
                         icon: Icons.delete,
                         title: "Delete Account",
-                        color: Colors.red,
                         isDestructive: true,
                         onTap: () => _showDeleteConfirmation(context),
                       ),
@@ -176,7 +178,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            
             ],
           );
         },
@@ -184,8 +185,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(
-      String label, String value, Color bgColor, Color textColor) {
+  Widget _buildStatCard(String label, String value, Color bgColor, Color textColor) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
@@ -221,16 +221,19 @@ class ProfileScreen extends StatelessWidget {
       {required IconData icon,
       required String title,
       required VoidCallback onTap,
-      Color color = Colors.black87,
       bool isDestructive = false}) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
             spreadRadius: 1,
             blurRadius: 5,
           )
@@ -240,19 +243,24 @@ class ProfileScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isDestructive ? Colors.red.shade50 : Colors.blue.shade50,
+            color: isDestructive 
+                ? (isDark ? Colors.red.withOpacity(0.2) : Colors.red.shade50) 
+                : (isDark ? colorScheme.primary.withOpacity(0.2) : Colors.blue.shade50),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: isDestructive ? Colors.red : Colors.blue),
+          child: Icon(
+            icon, 
+            color: isDestructive ? Colors.red : (isDark ? colorScheme.primary : Colors.blue),
+          ),
         ),
         title: Text(
           title,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: isDestructive ? Colors.red : Colors.black87,
+            color: isDestructive ? Colors.red : colorScheme.onSurface,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: colorScheme.onSurface.withOpacity(0.5)),
         onTap: onTap,
       ),
     );

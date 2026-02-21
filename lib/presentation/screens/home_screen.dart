@@ -342,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           context: context,
                                           builder: (ctx) => AlertDialog(
                                             title: const Text('Delete List'),
-                                            content: Text('Delete "$listName"?'),
+                                            content: Text('Delete "$listName"? Tasks in this list will not be deleted.'),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.pop(ctx),
@@ -361,6 +361,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   }
                                                   Navigator.pop(ctx);
                                                   Navigator.pop(context);
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Row(children: [
+                                                        const Icon(Icons.delete, color: Colors.white),
+                                                        const SizedBox(width: 10),
+                                                        Text('"$listName" deleted!'),
+                                                      ]),
+                                                      backgroundColor: Colors.red,
+                                                      behavior: SnackBarBehavior.floating,
+                                                      duration: const Duration(seconds: 2),
+                                                    ),
+                                                  );
                                                 },
                                                 child: const Text('Delete', style: TextStyle(color: Colors.red)),
                                               ),
@@ -415,26 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
                   title: const Text("Logout", style: TextStyle(color: Colors.red)),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final shouldLogout = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text("Logout"),
-                        content: const Text("Are you sure?"),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Logout", style: TextStyle(color: Colors.red))),
-                        ],
-                      ),
-                    );
-                    if (shouldLogout == true) {
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
-                      }
-                    }
-                  },
+                  onTap: () => showLogoutDialog(context),
                 ),
               ],
             ),
@@ -445,7 +438,21 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const AddTaskScreen()),
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const AddTaskScreen(),
+                transitionsBuilder: (_, animation, __, child) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    )),
+                    child: child,
+                  );
+                },
+              ),
             );
           },
         ),

@@ -61,13 +61,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Security Settings"),
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFF1E293B),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -77,18 +77,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Update Password",
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   "Keep your account secure with a strong password.",
-                  style: TextStyle(color: Color(0xFF64748B)),
+                  style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
                 ),
                 const SizedBox(height: 32),
 
