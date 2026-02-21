@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/custom_text_field.dart';
+import '../widgets/custom_button.dart';
+import '../../core/utils/validators.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -9,11 +12,14 @@ class ChangePasswordScreen extends StatefulWidget {
 }
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _oldController = TextEditingController();
   final _newController = TextEditingController();
   bool loading = false;
 
   Future<void> changePassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
     try {
       setState(() => loading = true);
 
@@ -30,14 +36,24 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password updated successfully")),
+          const SnackBar(
+            content: Text("Password updated successfully"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().split(']').last.trim()),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -46,29 +62,62 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Change Password")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            TextField(
-              controller: _oldController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "Current Password"),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Security Settings"),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: const Color(0xFF1E293B),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Update Password",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Keep your account secure with a strong password.",
+                  style: TextStyle(color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 32),
+
+                CustomTextField(
+                  controller: _oldController,
+                  label: "Current Password",
+                  prefixIcon: Icons.lock_outline,
+                  isPassword: true,
+                  validator: (val) => val == null || val.isEmpty ? "Required" : null,
+                ),
+                const SizedBox(height: 20),
+
+                CustomTextField(
+                  controller: _newController,
+                  label: "New Password",
+                  prefixIcon: Icons.lock_reset_rounded,
+                  isPassword: true,
+                  validator: AppValidators.password,
+                ),
+                const SizedBox(height: 40),
+
+                CustomButton(
+                  onPressed: changePassword,
+                  text: "UPDATE PASSWORD",
+                  isLoading: loading,
+                ),
+              ],
             ),
-            TextField(
-              controller: _newController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "New Password"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: loading ? null : changePassword,
-              child: loading
-                  ? const CircularProgressIndicator()
-                  : const Text("Update Password"),
-            ),
-          ],
+          ),
         ),
       ),
     );

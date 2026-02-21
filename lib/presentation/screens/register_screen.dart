@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../core/utils/validators.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import 'login_screen.dart';
@@ -144,8 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                       controller: nameController,
                       label: "Full Name",
                       prefixIcon: Icons.person_outline,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? "Name required" : null,
+                      validator: AppValidators.name,
                     ),
               
                     const SizedBox(height: 16),
@@ -156,15 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                       label: "Email",
                       prefixIcon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Email required";
-                        }
-                        if (!value.contains("@")) {
-                          return "Enter a valid email";
-                        }
-                        return null;
-                      },
+                      validator: AppValidators.email,
                     ),
               
                     const SizedBox(height: 16),
@@ -175,15 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                       label: "Password",
                       prefixIcon: Icons.lock_outline,
                       isPassword: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Password required";
-                        }
-                        if (value.length < 6) {
-                          return "Password must be at least 6 characters";
-                        }
-                        return null;
-                      },
+                      validator: AppValidators.password,
                     ),
               
                     const SizedBox(height: 16),
