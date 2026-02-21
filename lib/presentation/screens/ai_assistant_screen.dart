@@ -131,13 +131,14 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text("AI Task Assistant", style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -164,14 +165,16 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                     decoration: BoxDecoration(
-                      color: isUser ? const Color(0xFF3B82F6) : Colors.white,
+                      color: isUser 
+                          ? colorScheme.primary 
+                          : (isDark ? colorScheme.surfaceContainerHighest : colorScheme.surface),
                       borderRadius: BorderRadius.circular(20).copyWith(
                         bottomRight: isUser ? const Radius.circular(0) : const Radius.circular(20),
                         bottomLeft: !isUser ? const Radius.circular(0) : const Radius.circular(20),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -180,7 +183,9 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                     child: Text(
                       msg['text']!,
                       style: TextStyle(
-                        color: isUser ? Colors.white : Colors.black87,
+                        color: isUser 
+                            ? colorScheme.onPrimary 
+                            : colorScheme.onSurface,
                         fontSize: 15,
                       ),
                     ),
@@ -200,10 +205,10 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
             ),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
@@ -216,25 +221,29 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Ask me a question...",
+                        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(25),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: const Color(0xFFF1F5F9),
+                        fillColor: isDark 
+                            ? colorScheme.surfaceContainerHighest 
+                            : const Color(0xFFF1F5F9),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       ),
                       onSubmitted: (_) => _handleSend(),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white),
-                      onPressed: _handleSend,
+                  GestureDetector(
+                    onTap: _handleSend,
+                    child: CircleAvatar(
+                      backgroundColor: colorScheme.primary,
+                      child: Icon(Icons.send, color: colorScheme.onPrimary),
                     ),
                   ),
                 ],

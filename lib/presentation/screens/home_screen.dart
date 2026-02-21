@@ -16,11 +16,10 @@ import 'starred_tasks_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'ai_assistant_screen.dart';
-import '../widgets/logout_dialog.dart';
-
+import 'task_search_screen.dart';
 import 'notification_settings_screen.dart';
-
 import '../../core/services/local_notification_service.dart';
+import '../widgets/logout_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,67 +69,6 @@ class _LiveClockState extends State<_LiveClock> {
 
 class _HomeScreenState extends State<HomeScreen> {
   String get uid => FirebaseAuth.instance.currentUser!.uid;
-
-  // 🔔 Phase 2 (we’ll activate later)
-  /*
-  Future<void> _applyNotificationSettings() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-
-    if (!doc.exists) return;
-
-    final notifications = doc['notifications'];
-    if (notifications['dailyReminder'] == true) {
-      final time = notifications['reminderTime'].split(':');
-      await LocalNotificationService.scheduleDailyReminder(
-        hour: int.parse(time[0]),
-        minute: int.parse(time[1]),
-      );
-    } else {
-      await LocalNotificationService.cancelDailyReminder();
-    }
-  }
-  */
-
-//   Future<void> showLogoutDialog(BuildContext context) async {
-//   final shouldLogout = await showDialog<bool>(
-//     context: context,
-//     builder: (context) {
-//       return AlertDialog(
-//         title: const Text("Logout"),
-//         content: const Text(
-//           "Are you sure you want to logout?",
-//         ),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.pop(context, false),
-//             child: const Text("Cancel"),
-//           ),
-//           TextButton(
-//             onPressed: () => Navigator.pop(context, true),
-//             child: const Text(
-//               "Logout",
-//               style: TextStyle(color: Colors.red),
-//             ),
-//           ),
-//         ],
-//       );
-//     },
-//   );
-
-//   if (shouldLogout == true) {
-//     await FirebaseAuth.instance.signOut();
-
-//     Navigator.pushAndRemoveUntil(
-//       context,
-//       MaterialPageRoute(builder: (_) => const LoginScreen()),
-//       (_) => false,
-//     );
-//   }
-// }
-
 
   Widget _buildTaskList(BuildContext context, String uid, Query baseQuery, bool completed) {
     final query = baseQuery.where('isCompleted', isEqualTo: completed);
@@ -224,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (task.isStarred) const Icon(Icons.star, color: Colors.amber),
                     IconButton(
                       icon: const Icon(Icons.share, size: 20),
-                      onPressed: () => Share.share('\${task.title}\n\${task.description}'),
+                      onPressed: () => Share.share('${task.title}\n${task.description}'),
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
@@ -281,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedList = context.watch<ListProvider>().selectedList;
+    final uid = FirebaseAuth.instance.currentUser!.uid;
 
     Query baseQuery = FirebaseFirestore.instance
         .collection('users')
@@ -312,6 +251,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TaskSearchScreen()),
+                );
+              },
+            ),
             Consumer<ThemeProvider>(
               builder: (_, themeProvider, __) => IconButton(
                 icon: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode),
@@ -330,251 +278,177 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      
-
-      // 📂 DRAWER
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              const DrawerHeader(
-                child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
-              ),
-
-              // 📋 MAIN CONTENT
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // ✅ ALL TASKS
-                    ListTile(
-                      leading: const Icon(Icons.check),
-                      title: const Text("All tasks"),
-                      selected: selectedList == null,
-                      onTap: () {
-                        context.read<ListProvider>().showAllTasks();
-                        Navigator.pop(context);
-                      },
-                    ),
-
-                    // ⭐ STARRED
-                    ListTile(
-                      leading: const Icon(Icons.star),
-                      title: const Text("Starred"),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const StarredTasksScreen(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const Divider(),
-
-                    // 📁 LISTS
-                    ExpansionTile(
-                      title: const Text("Lists"),
-                      children: [
-                        StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(uid)
-                              .collection('lists')
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const SizedBox();
-                            }
-
-                            return Column(
-                              children: snapshot.data!.docs.map((doc) {
-                                final listName = doc['name'] as String;
-                                final docId = doc.id;
-
-                                return ListTile(
-                                  title: Text(listName),
-                                  selected: selectedList == listName,
-                                  onTap: () {
-                                    context.read<ListProvider>().selectList(listName);
-                                    Navigator.pop(context);
-                                  },
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                    tooltip: 'Delete list',
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: const Text('Delete List'),
-                                          content: Text('Delete "$listName"? Tasks in this list will not be deleted.'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(ctx),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                FirebaseFirestore.instance
-                                                    .collection('users')
-                                                    .doc(uid)
-                                                    .collection('lists')
-                                                    .doc(docId)
-                                                    .delete();
-                                                if (selectedList == listName) {
-                                                  context.read<ListProvider>().showAllTasks();
-                                                }
-                                                Navigator.pop(ctx);
-                                                Navigator.pop(context);
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Row(children: [
-                                                      const Icon(Icons.delete, color: Colors.white),
-                                                      const SizedBox(width: 10),
-                                                      Text('"$listName" deleted!'),
-                                                    ]),
-                                                    backgroundColor: Colors.red,
-                                                    behavior: SnackBarBehavior.floating,
-                                                    duration: const Duration(seconds: 2),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              }).toList(),
-                            );
-                          },
-                        ),
-
-                        // ➕ CREATE LIST
-                        ListTile(
-                          leading: const Icon(Icons.add),
-                          title: const Text("Create new list"),
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (_) => const CreateListDialog(),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+        drawer: Drawer(
+          child: SafeArea(
+            child: Column(
+              children: [
+                const DrawerHeader(
+                  child: Text("Task Manager 📝", style: TextStyle(fontSize: 24)),
                 ),
-              ),
-
-              ListTile(
-                leading: const Icon(Icons.notifications),
-                title: const Text("Notifications"),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const NotificationSettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-
-
-              // 🔻 BOTTOM ACTIONS
-              const Divider(),
-
-              // 👤 PROFILE
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text("Profile"),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
-              ),
-
-              // 🚪 LOGOUT
-              ListTile(
-  leading: const Icon(Icons.logout, color: Colors.red),
-  title: const Text(
-    "Logout",
-    style: TextStyle(color: Colors.red),
-  ),
-  onTap: () async {
-    Navigator.pop(context); // close drawer
-                    final shouldLogout = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text("Logout"),
-                        content: const Text("Are you sure you want to logout?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text("Cancel"),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text(
-                              "Logout",
-                              style: TextStyle(color: Colors.red),
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.check),
+                        title: const Text("All tasks"),
+                        selected: selectedList == null,
+                        onTap: () {
+                          context.read<ListProvider>().showAllTasks();
+                          Navigator.pop(context);
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.star),
+                        title: const Text("Starred"),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StarredTasksScreen(),
                             ),
+                          );
+                        },
+                      ),
+                      const Divider(),
+                      ExpansionTile(
+                        title: const Text("Lists"),
+                        children: [
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(uid)
+                                .collection('lists')
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
+                                return const SizedBox();
+                              }
+                              return Column(
+                                children: snapshot.data!.docs.map((doc) {
+                                  final listName = doc['name'] as String;
+                                  final docId = doc.id;
+                                  return ListTile(
+                                    title: Text(listName),
+                                    selected: selectedList == listName,
+                                    onTap: () {
+                                      context.read<ListProvider>().selectList(listName);
+                                      Navigator.pop(context);
+                                    },
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Delete List'),
+                                            content: Text('Delete "$listName"?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(ctx),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  FirebaseFirestore.instance
+                                                      .collection('users')
+                                                      .doc(uid)
+                                                      .collection('lists')
+                                                      .doc(docId)
+                                                      .delete();
+                                                  if (selectedList == listName) {
+                                                    context.read<ListProvider>().showAllTasks();
+                                                  }
+                                                  Navigator.pop(ctx);
+                                                  Navigator.pop(context);
+                                                },
+                                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.add),
+                            title: const Text("Create new list"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => const CreateListDialog(),
+                              );
+                            },
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.notifications),
+                  title: const Text("Notifications"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationSettingsScreen(),
+                      ),
                     );
-
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text("Profile"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title: const Text("Logout", style: TextStyle(color: Colors.red)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final shouldLogout = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("Logout"),
+                        content: const Text("Are you sure?"),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Logout", style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                    );
                     if (shouldLogout == true) {
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoginScreen()),
-                          (_) => false,
-                        );
+                        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
                       }
                     }
                   },
-),
-
-
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-
-        // ➕ ADD TASK
         floatingActionButton: FloatingActionButton(
           child: const Icon(Icons.add),
           onPressed: () {
             Navigator.push(
               context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const AddTaskScreen(),
-                transitionsBuilder: (_, animation, __, child) {
-                  return SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 1),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    )),
-                    child: child,
-                  );
-                },
-              ),
+              MaterialPageRoute(builder: (_) => const AddTaskScreen()),
             );
           },
         ),
-
-        // 📋 TABBED TASK LISTS
         body: TabBarView(
           children: [
             _buildTaskList(context, uid, baseQuery, false),
