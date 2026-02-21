@@ -47,12 +47,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
         style: const TextStyle(fontSize: 16),
         decoration: InputDecoration(
           labelText: widget.label,
-          prefixIcon: Icon(widget.prefixIcon, color: Colors.blueAccent),
+          labelStyle: TextStyle(color: Colors.blueGrey.shade400, fontSize: 14),
+          prefixIcon: Icon(widget.prefixIcon, color: Colors.blueAccent, size: 22),
           suffixIcon: widget.isPassword
               ? IconButton(
                   icon: Icon(
                     _obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.grey,
+                    color: Colors.blueGrey.shade300,
+                    size: 20,
                   ),
                   onPressed: () {
                     setState(() {
@@ -62,14 +64,22 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 )
               : null,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.blueGrey.shade50),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 1.5),
+          ),
           filled: true,
-          fillColor: Colors.grey.withOpacity(0.05),
+          fillColor: Colors.white.withOpacity(0.8),
           contentPadding: const EdgeInsets.symmetric(
-            vertical: 16,
-            horizontal: 16,
+            vertical: 18,
+            horizontal: 20,
           ),
         ),
       ),

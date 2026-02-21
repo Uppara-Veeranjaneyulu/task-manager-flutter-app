@@ -87,213 +87,312 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Container(
-          height: MediaQuery.of(context).size.height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.blue.shade50,
-                Colors.white,
-                Colors.blue.shade50,
-              ],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   const SizedBox(height: 60),
-                  // Logo or Icon
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.2),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 80,
-                      color: Colors.blueAccent,
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  
-                  const Text(
-                    "Welcome Back",
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Sign in to continue managing your tasks",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // 📧 EMAIL
-                  CustomTextField(
-                    controller: emailController,
-                    label: "Email",
-                    prefixIcon: Icons.email_outlined,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 🔑 PASSWORD
-                  CustomTextField(
-                    controller: passwordController,
-                    label: "Password",
-                    prefixIcon: Icons.lock_outline,
-                    isPassword: true,
-                  ),
-
-                  // 🔁 FORGOT PASSWORD
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ForgotPasswordScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        "Forgot password?",
-                        style: TextStyle(color: Colors.blueAccent),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 🔐 LOGIN BUTTON
-                  CustomButton(
-                    onPressed: login,
-                    text: "LOGIN",
-                    isLoading: isLoading,
-                  ),
-
-                  const SizedBox(height: 24),
-                  
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          "OR",
-                          style: TextStyle(color: Colors.grey.shade500),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-
-                  // 🔵 GOOGLE LOGIN
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: OutlinedButton.icon(
-                      icon: Image.asset(
-                        'assets/google_logo.png', // Make sure you have this asset or use Icon(Icons.g_mobiledata)
-                        height: 24,
-                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 30),
-                      ),
-                      label: const Text(
-                        "Sign in with Google",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: Colors.white,
-                      ),
-                      onPressed: () async {
-                        try {
-                          final result = await GoogleAuthService.signInWithGoogle();
-
-                          // Fire Firestore update in background
-                          UserService.createUserIfNotExists(result.user!);
-
-                          if (mounted) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (_) => const HomeScreen()),
-                            );
-                          }
-                        } catch (e) {
-                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
-                            );
-                           }
-                        }
-                      },
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // 🆕 REGISTER
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Don't have an account? ",
-                        style: TextStyle(color: Color(0xFF64748B)),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                          );
-                        },
-                        child: const Text(
-                          "Sign Up",
-                          style: TextStyle(
-                            color: Colors.blueAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
+      body: Stack(
+        children: [
+          // 🎨 LAYER 1: Sophisticated Gradient Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFF8FAFC), // Slate 50
+                  Color(0xFFEFF6FF), // Blue 50
+                  Color(0xFFF8FAFC),
                 ],
               ),
             ),
           ),
+          
+          // 🫧 LAYER 2: Abstract Decorative Shapes
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blueAccent.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            left: -50,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue.withOpacity(0.05),
+              ),
+            ),
+          ),
+
+          // 📄 LAYER 3: Main Content
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 60),
+
+                    // 🏷️ LOGO SECTION
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(seconds: 1),
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Opacity(opacity: value, child: child),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blueAccent.withOpacity(0.12),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.check_circle_rounded,
+                          size: 70,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // ✨ WELCOME TEXT (Staggered)
+                    _buildAnimatedItem(
+                      intervalStart: 0.2,
+                      child: const Column(
+                        children: [
+                          Text(
+                            "Welcome Back",
+                            style: TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            "Manage your daily flow with ease",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 48),
+
+                    // 🧩 FORM SECTION
+                    _buildAnimatedItem(
+                      intervalStart: 0.4,
+                      child: Column(
+                        children: [
+                          CustomTextField(
+                            controller: emailController,
+                            label: "Email Address",
+                            prefixIcon: Icons.alternate_email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 20),
+                          CustomTextField(
+                            controller: passwordController,
+                            label: "Password",
+                            prefixIcon: Icons.lock_open_rounded,
+                            isPassword: true,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 🔁 FORGOT PASSWORD
+                    _buildAnimatedItem(
+                      intervalStart: 0.5,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            "Forgot password?",
+                            style: TextStyle(
+                              color: Colors.blueAccent.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // 🔐 LOGIN BUTTON
+                    _buildAnimatedItem(
+                      intervalStart: 0.6,
+                      child: CustomButton(
+                        onPressed: login,
+                        text: "Sign In",
+                        isLoading: isLoading,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    _buildAnimatedItem(
+                      intervalStart: 0.7,
+                      child: Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.blueGrey.shade100)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              "continue with",
+                              style: TextStyle(
+                                color: Colors.blueGrey.shade300,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.blueGrey.shade100)),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // 🔵 GOOGLE LOGIN
+                    _buildAnimatedItem(
+                      intervalStart: 0.8,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 58,
+                        child: OutlinedButton.icon(
+                          icon: Image.asset(
+                            'assets/google_logo.png',
+                            height: 22,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.g_mobiledata, size: 30, color: Colors.red),
+                          ),
+                          label: const Text(
+                            "Google Account",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.blueGrey.shade100),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            backgroundColor: Colors.white,
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            try {
+                              final result = await GoogleAuthService.signInWithGoogle();
+                              UserService.createUserIfNotExists(result.user!);
+                              if (mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const HomeScreen()),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString()), behavior: SnackBarBehavior.floating),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // 🆕 REGISTER link at the very bottom
+                    _buildAnimatedItem(
+                      intervalStart: 0.9,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "New here? ",
+                            style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              );
+                            },
+                            child: const Text(
+                              "Create Account",
+                              style: TextStyle(
+                                color: Colors.blueAccent,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimatedItem({required double intervalStart, required Widget child}) {
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(intervalStart, intervalStart + 0.3, curve: Curves.easeOut),
+      ),
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Interval(intervalStart, intervalStart + 0.3, curve: Curves.easeOutCubic),
+          ),
         ),
+        child: child,
       ),
     );
   }
