@@ -15,6 +15,7 @@ import 'edit_task_screen.dart';
 import 'starred_tasks_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'ai_assistant_screen.dart';
 import '../widgets/logout_dialog.dart';
 
 import 'notification_settings_screen.dart';
@@ -316,6 +317,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode),
                 onPressed: themeProvider.toggleTheme,
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.psychology_outlined),
+              tooltip: 'AI Assistant',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AIAssistantScreen()),
+                );
+              },
             ),
           ],
         ),

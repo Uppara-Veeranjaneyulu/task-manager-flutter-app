@@ -383,13 +383,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return FadeTransition(
       opacity: CurvedAnimation(
         parent: _animationController,
-        curve: Interval(intervalStart, intervalStart + 0.3, curve: Curves.easeOut),
+        curve: Interval(intervalStart, (intervalStart + 0.3).clamp(0.0, 1.0), curve: Curves.easeOut),
       ),
       child: SlideTransition(
         position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _animationController,
-            curve: Interval(intervalStart, intervalStart + 0.3, curve: Curves.easeOutCubic),
+            curve: Interval(intervalStart, (intervalStart + 0.3).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
           ),
         ),
         child: child,
