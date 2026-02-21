@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:lottie/lottie.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/ai_service.dart';
 
 class AIAssistantScreen extends StatefulWidget {
@@ -15,13 +15,44 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    _messages.add({
-      'role': 'assistant',
-      'text': 'Hi! I am your AI Task Assistant. Ask me anything about your tasks, like "What are my pending tasks?"'
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    if (_uid == null) return;
+    
+    // Initial welcome message if no history exists is handled by logic below
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(_uid)
+        .collection('ai_history')
+        .orderBy('timestamp', descending: false)
+        .get()
+        .then((snapshot) {
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+          if (snapshot.docs.isEmpty) {
+             _messages.add({
+              'role': 'assistant',
+              'text': 'Hi! I am your AI Task Assistant. Ask me anything about your tasks, like "What are my pending tasks?"'
+            });
+          } else {
+            for (var doc in snapshot.docs) {
+              _messages.add({
+                'role': doc['role'],
+                'text': doc['text'],
+              });
+            }
+          }
+        });
+        _scrollToBottom();
+      }
     });
   }
 
@@ -39,7 +70,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
 
   Future<void> _handleSend() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _uid == null) return;
 
     setState(() {
       _messages.add({'role': 'user', 'text': text});
@@ -48,23 +79,53 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     });
     _scrollToBottom();
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      setState(() {
-        _messages.add({'role': 'assistant', 'text': 'You must be logged in to use this feature.'});
-        _isLoading = false;
-      });
-      return;
-    }
+    // 💾 Save User Message to History
+    await AIService().saveMessage(text: text, role: 'user', uid: _uid!);
 
-    final response = await AIService().askAboutTasks(text, user.uid);
+    final response = await AIService().askAboutTasks(text, _uid!);
 
     if (mounted) {
+      // 💾 Save Assistant Message to History
+      await AIService().saveMessage(text: response, role: 'assistant', uid: _uid!);
+
       setState(() {
         _messages.add({'role': 'assistant', 'text': response});
         _isLoading = false;
       });
       _scrollToBottom();
+    }
+  }
+
+  Future<void> _clearHistory() async {
+    if (_uid == null) return;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Clear History?"),
+        content: const Text("This will delete all previous chat messages."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text("Clear", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await AIService().clearChatHistory(_uid!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Chat history deleted successfully"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
     }
   }
 
@@ -77,6 +138,13 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _clearHistory,
+            tooltip: "Clear History",
+          ),
+        ],
       ),
       body: Column(
         children: [

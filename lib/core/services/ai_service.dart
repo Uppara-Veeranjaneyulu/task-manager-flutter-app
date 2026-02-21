@@ -33,10 +33,6 @@ class AIService {
           .get()
           .timeout(const Duration(seconds: 10));
 
-      if (snapshot.docs.isEmpty) {
-        return "You don't have any tasks yet! Please add some first.";
-      }
-
       final tasks = snapshot.docs.map((doc) {
           final data = doc.data();
           return {
@@ -70,6 +66,42 @@ Guidelines:
     } catch (e) {
       return "Connectivity Error: ${e.toString()}";
     }
+  }
+
+  // 🏪 Firestore History Methods
+  Future<void> saveMessage({required String text, required String role, required String uid}) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('ai_history')
+        .add({
+          'text': text,
+          'role': role,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Stream<QuerySnapshot> getChatHistoryStream(String uid) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('ai_history')
+        .orderBy('timestamp', descending: false)
+        .snapshots();
+  }
+
+  Future<void> clearChatHistory(String uid) async {
+    final batch = FirebaseFirestore.instance.batch();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('ai_history')
+        .get();
+    
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
   }
 
   // 🧠 Static prediction logic for AddTaskScreen
