@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -85,18 +86,26 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
 
     if (result != null && result is String) {
-       // Assuming JSON format: {"title": "...", "description": "..."}
-       // Or just plain text
        try {
-         // Simple parsing if it looks like JSON? For now, treat as plain text title
-         if (result.startsWith('{')) {
-            // Need dart:convert, but let's just dump it in description for now or title
-             descriptionController.text = result;
-         } else {
-             titleController.text = result;
+         // Attempt to parse result as JSON
+         final Map<String, dynamic> data = jsonDecode(result);
+         
+         if (data.containsKey('title')) {
+           titleController.text = data['title'].toString();
          }
+         if (data.containsKey('description')) {
+           descriptionController.text = data['description'].toString();
+         } else if (!data.containsKey('title')) {
+           // If it's valid JSON but doesn't have title/desc, dump it in description
+           descriptionController.text = result;
+         }
+         
+         setState(() {});
        } catch (e) {
-         titleController.text = result;
+         // Fallback: If not valid JSON, treat as Title
+         setState(() {
+           titleController.text = result;
+         });
        }
     }
   }
