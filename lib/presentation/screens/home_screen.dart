@@ -118,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), // Increased height
                 leading: completed
                     ? IconButton(
                         icon: const Icon(Icons.check_circle, color: Colors.green, size: 28),
@@ -152,12 +153,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: Text(
                   task.title,
                   style: TextStyle(
+                    fontWeight: FontWeight.bold, // Make it a bit more prominent
                     decoration: completed ? TextDecoration.lineThrough : null,
                     color: completed ? Colors.grey : null,
                   ),
                 ),
                 subtitle: task.description.isNotEmpty
-                    ? Text(task.description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ? Text(task.description, maxLines: 2, overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: completed ? Colors.grey : null))
                     : null,
                 trailing: Row(
