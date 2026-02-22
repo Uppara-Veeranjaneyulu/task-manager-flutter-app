@@ -60,9 +60,13 @@ class _LiveClockState extends State<_LiveClock> {
     const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     final date = '${days[_now.weekday - 1]}, ${_now.day} ${months[_now.month - 1]} ${_now.year}';
     final time = '${_now.hour.toString().padLeft(2,'0')}:${_now.minute.toString().padLeft(2,'0')}:${_now.second.toString().padLeft(2,'0')}';
-    return Text(
-      '$date  •  $time',
-      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        '$date  •  $time',
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+      ),
     );
   }
 }
@@ -234,6 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
+          centerTitle: false,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
