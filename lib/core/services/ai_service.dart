@@ -70,15 +70,19 @@ Guidelines:
 
   // 🏪 Firestore History Methods
   Future<void> saveMessage({required String text, required String role, required String uid}) async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('ai_history')
-        .add({
-          'text': text,
-          'role': role,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('ai_history')
+          .add({
+            'text': text,
+            'role': role,
+            'timestamp': FieldValue.serverTimestamp(),
+          }).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      print("History Save Error: $e");
+    }
   }
 
   Stream<QuerySnapshot> getChatHistoryStream(String uid) {

@@ -79,20 +79,32 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     });
     _scrollToBottom();
 
-    // 💾 Save User Message to History
-    await AIService().saveMessage(text: text, role: 'user', uid: _uid!);
+    try {
+      // 💾 Save User Message to History
+      await AIService().saveMessage(text: text, role: 'user', uid: _uid!);
 
-    final response = await AIService().askAboutTasks(text, _uid!);
+      final response = await AIService().askAboutTasks(text, _uid!);
 
-    if (mounted) {
-      // 💾 Save Assistant Message to History
-      await AIService().saveMessage(text: response, role: 'assistant', uid: _uid!);
+      if (mounted) {
+        // 💾 Save Assistant Message to History
+        await AIService().saveMessage(text: response, role: 'assistant', uid: _uid!);
 
-      setState(() {
-        _messages.add({'role': 'assistant', 'text': response});
-        _isLoading = false;
-      });
-      _scrollToBottom();
+        setState(() {
+          _messages.add({'role': 'assistant', 'text': response});
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add({'role': 'assistant', 'text': "Error: ${e.toString()}"});
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _scrollToBottom();
+      }
     }
   }
 
