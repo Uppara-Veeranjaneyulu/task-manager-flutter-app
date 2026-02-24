@@ -69,7 +69,7 @@ A comprehensive Task Management application built with **Flutter** and **Firebas
 
 ## 📸 Screenshots
 
-<img width="419" height="935" alt="image" src="https://github.com/user-attachments/assets/b3828496-8b04-4775-b1ba-8c3721299ee8" /> | <img width="419" height="935" alt="image" src="https://github.com/user-attachments/assets/366dc25c-7f45-428b-bd30-9ae022a44229" />
+<img width="200" height="400" alt="image" src="https://github.com/user-attachments/assets/b3828496-8b04-4775-b1ba-8c3721299ee8" /> 
 
 
 
