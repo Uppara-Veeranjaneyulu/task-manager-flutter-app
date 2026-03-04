@@ -1,0 +1,22 @@
+{
+    "version": 2,
+    "public": true,
+    "installCommand": "flutter/bin/flutter pub get",
+    "buildCommand": "flutter/bin/flutter build web --release",
+    "outputDirectory": "build/web",
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/api/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ],
+    "functions": {
+        "api/*.js": {
+            "runtime": "nodejs18.x"
+        }
+    }
+}
